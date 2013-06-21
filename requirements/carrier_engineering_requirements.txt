@@ -1,0 +1,24 @@
+
+Activate their cellular account & service
+Enable the cellular modem
+Disable the cellular modem
+Connect to a CDMA/UMTS/LTE network
+Disconnect from the celluar network
+Download data via the cellular connection
+Upload data via the cellular connection
+Lock their SIM card via a PIN
+Unlock their SIM card via a PIN
+Unlock their SIM card via a PUK code
+Determine their signal strength
+Determine their connection technology - GPRS, EDGE, CDMA, UMTS, LTE etc
+Determine their international roaming status
+Enable roaming
+Disable roaming
+Set their APN details - APN, username & password
+Update their PRL
+Receive a notification when they are out of credit
+Receive an SMS notification
+Succesfully maintain a connection during a 2G <-> 3G tower handover
+Navigate to their account management page via the "View Account" link
+Switch the modem firmware to connect to different CDMA carriers and UMTS networks
+Reset the modem to the factory state.
