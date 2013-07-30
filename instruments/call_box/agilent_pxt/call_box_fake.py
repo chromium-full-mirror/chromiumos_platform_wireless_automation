@@ -3,10 +3,11 @@
 # found in the LICENSE file.
 
 import functools
+from instruments.call_box import call_box_interface
 from wireless_automation.aspects import wireless_automation_error
 from wireless_automation.aspects import wireless_automation_logging
 from wireless_automation.instruments.call_box.agilent_pxt \
-        import call_box_interface, call_box_pxt
+        import call_box_pxt
 
 log = wireless_automation_logging.setup_logging('call_box_fake')
 
@@ -30,10 +31,10 @@ def log_args_and_return_values(f):
 
 class CallBoxFakeBase(call_box_interface.CallBoxInterface):
     # These are empty because this is a base class.
-    _all_states = []              # List of possible states
-    _idle_states = []             # The state that means it's idle
-    _connected_states = []        # The states that count as connected
-    _idn_string = "*idn? return"  # The ID string *IDN? returns
+    ALL_STATES = []              # List of possible states
+    IDLE_STATES = []             # The state that means it's idle
+    CONNECTED_STATES = []        # The states that count as connected
+    IDN_STRING = "*idn? return"  # The ID string *IDN? returns
 
     @log_args_and_return_values
     def __init__(self, config):
@@ -43,17 +44,17 @@ class CallBoxFakeBase(call_box_interface.CallBoxInterface):
         self.reset()
 
     def get_id(self):
-        return self._idn_string
+        return self.IDN_STRING
 
     @log_args_and_return_values
     def reset(self):
-        self._current_state = self._all_states[0]
+        self._current_state = self.ALL_STATES[0]
         self._power = -99    # Current power, dBm
         self._rf_on = False
 
     @log_args_and_return_values
     def is_idle(self):
-        return self._current_state in self._idle_states
+        return self._current_state in self.IDLE_STATES
 
     @log_args_and_return_values
     def close(self):
@@ -62,7 +63,7 @@ class CallBoxFakeBase(call_box_interface.CallBoxInterface):
     @log_args_and_return_values
     def is_connected(self):
         log.debug('in state: %s ' % self._current_state)
-        return self._current_state in self._connected_states
+        return self._current_state in self.CONNECTED_STATES
 
     @log_args_and_return_values
     def _get_cell_status(self):
@@ -93,23 +94,23 @@ class CallBoxFakeBase(call_box_interface.CallBoxInterface):
 
     @log_args_and_return_values
     def start(self):
-        self._current_state = self._connected_states[0]
+        self._current_state = self.CONNECTED_STATES[0]
 
     @log_args_and_return_values
     def stop(self):
-        self._current_state = self._idle_states[0]
+        self._current_state = self.IDLE_STATES[0]
 
 
 class CallBoxPxt(CallBoxFakeBase):
     """
     Map the real PXT values, so we test those.
     """
-    _configspec = call_box_pxt.CallBoxPxt.configspec
-    _all_states = call_box_pxt.CallBoxPxt.all_states
-    _connected_states = call_box_pxt.CallBoxPxt.connected_states
-    _idle_states = call_box_pxt.CallBoxPxt.idle_states
-    _idn_string = call_box_pxt.CallBoxPxt.idn_string
-    _match_in_id_string = call_box_pxt.CallBoxPxt.match_in_id_string
+    CONFIGSPEC = call_box_pxt.CallBoxPxt.CONFIGSPEC
+    ALL_STATES = call_box_pxt.CallBoxPxt.ALL_STATES
+    CONNECTED_STATES = call_box_pxt.CallBoxPxt.CONNECTED_STATES
+    IDLE_STATES = call_box_pxt.CallBoxPxt.IDLE_STATES
+    IDN_STRING = call_box_pxt.CallBoxPxt.IDN_STRING
+    MATCH_IN_ID_STRING = call_box_pxt.CallBoxPxt.MATCH_IN_ID_STRING
 
     def __init__(self, config):
         super(CallBoxPxt, self).__init__(config)

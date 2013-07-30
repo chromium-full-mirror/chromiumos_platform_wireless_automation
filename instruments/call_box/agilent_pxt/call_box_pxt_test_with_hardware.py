@@ -39,7 +39,7 @@ class test_pxt(unittest.TestCase):
         assert not self.pxt.is_idle()
         self.pxt.stop()
         assert self.pxt.is_idle()
-        assert self.pxt.match_in_id_string in self.pxt.get_id()
+        assert self.pxt.MATCH_IN_ID_STRING in self.pxt.get_id()
         self.pxt.close()
         assert power == power_read
 

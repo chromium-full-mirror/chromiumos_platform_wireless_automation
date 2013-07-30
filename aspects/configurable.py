@@ -270,6 +270,7 @@ class Configurable(object):
     """
     # The config spec(a ConfigObject term for the definition of the
     #  configuration)
+    CONFIGSPEC = ['Override configspec derived classes']
 
     def __init__(self, input_config_data=None):
         """

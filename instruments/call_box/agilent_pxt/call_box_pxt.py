@@ -4,10 +4,9 @@
 
 import time
 
+from wireless_automation.instruments.call_box import call_box_interface
 from wireless_automation.aspects import wireless_automation_error
 from wireless_automation.instruments.prologix import prologix_scpi_driver
-from wireless_automation.instruments.call_box.agilent_pxt \
-    import call_box_interface
 from wireless_automation.labs import labconfig_data
 
 
@@ -15,7 +14,7 @@ class CallBoxPxt(call_box_interface.CallBoxInterface):
     """
     Object for the Agilent PXT, the LTE call box.
     """
-    configspec = [
+    CONFIGSPEC = [
         'channel=integer(min=0, max=9999, default=1)',
         'scpi_hostname=string(default=lookup_in_labconfig)',
         'port=integer(default=1234)',
@@ -26,15 +25,14 @@ class CallBoxPxt(call_box_interface.CallBoxInterface):
     # List of possible call status. Used in the CallBoxFakePxt
     # to give correct answers, but stored here to keep all the
     # PXT knowledge in one place.
-    all_states = ['STOP', 'OFF', 'IDLE', 'CON', 'REG', 'LOOP', 'REL', 'UNAV']
-    idle_states = ['STOP', 'IDLE', 'OFF']
-    connected_states = ['CON']
-    idn_string = "Agilent Technologies,E6621A,MY51100107,6.4.0.7"
-    match_in_id_string = 'E6621'
+    ALL_STATES = ['STOP', 'OFF', 'IDLE', 'CON', 'REG', 'LOOP', 'REL', 'UNAV']
+    IDLE_STATES = ['STOP', 'IDLE', 'OFF']
+    CONNECTED_STATES = ['CON']
+    IDN_STRING = "Agilent Technologies,E6621A,MY51100107,6.4.0.7"
+    MATCH_IN_ID_STRING = 'E6621'
 
     def __init__(self, config):
         super(CallBoxPxt, self).__init__(config)
-        self.is_this_config_valid(config)
         if config['scpi_hostname'] == 'lookup_in_labconfig':
             config['scpi_hostname'] = labconfig_data.oyster_bay_pxt_gpib_ip
 
@@ -46,7 +44,7 @@ class CallBoxPxt(call_box_interface.CallBoxInterface):
             connect_timeout_seconds=config['connect_timeout_seconds']
         )
         # Make sure we can talk to it, and it's the right box
-        assert self.match_in_id_string in self.get_id()
+        assert self.MATCH_IN_ID_STRING in self.get_id()
 
     def get_id(self):
         return self.scpi.query("*IDN?")
@@ -56,13 +54,13 @@ class CallBoxPxt(call_box_interface.CallBoxInterface):
 
     def is_idle(self):
         state = self.scpi.query('BSE:SIMULator?')
-        return state in self.idle_states
+        return state in self.IDLE_STATES
 
     def close(self):
         self.scpi.close()
 
     def is_connected(self):
-        return self._get_cell_status() in self.connected_states
+        return self._get_cell_status() in self.CONNECTED_STATES
 
     def _get_cell_status(self):
         status = self.scpi.query('BSE:STATus:ACELL?')
@@ -99,4 +97,4 @@ class CallBoxPxt(call_box_interface.CallBoxInterface):
             time.sleep(1)
         raise wireless_automation_error.InstrumentTimeout(
             'PXT::Stop did not produce an idle state '
-            'Idle State: %s' % self.idle_states)
+            'Idle State: %s' % self.IDLE_STATES)
