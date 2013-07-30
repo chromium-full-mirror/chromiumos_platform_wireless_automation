@@ -16,8 +16,7 @@ class ConfigurableTestClass1(configurable.Configurable):
     """
     a test class with a configspec for testing, used below.
     """
-    # TODO(byronk): use better names, and give examples of all the types
-    configspec = [
+    CONFIGSPEC = [
         '#comment here',
         'topnumber=integer(min=1,max=50,default=21)',
         '[level_1]',
@@ -44,14 +43,14 @@ class BrokenConfigurableTestClass1(ConfigurableTestClass1):
     """
     BrokenConfigurableTestClass1
     """
-    configspec = 'this should break the configspec reader'
+    CONFIGSPEC = 'this should break the configspec reader'
 
 
 class BrokenConfigurableTestClass1List(ConfigurableTestClass1):
     """
     BrokenConfigurableTestClass1List
     """
-    configspec = ['this should break the configspec reader']
+    CONFIGSPEC = ['this should break the configspec reader']
 
 
 class ConfigurableTestClassNoConfigspec(configurable.Configurable):
@@ -66,21 +65,49 @@ class ConfigurableWithConfigspecDict(ConfigurableTestClass1):
     """
     ConfigurableWithConfigspecDict
     """
-    configspec = {'should not work '}
+    CONFIGSPEC = {'should not work '}
 
 
 class ConfigurableOnlyNeedsLevel1(ConfigurableTestClass1):
     """
     Take a subsection of the config
     """
-    configspec = 'set this later '
+    CONFIGSPEC = 'set this later '
 
 
 class ConfigurableClassWithConfigobjAsConfigspec(configurable.Configurable):
     """
     ConfigurableClassWithConfigobjAsConfigspec
     """
-    configspec = configobj.ConfigObj(configspec=['x:integer(default=11)'])
+    CONFIGSPEC = configobj.ConfigObj(configspec=['x:integer(default=11)'])
+
+
+class ClassWithAllTheConfigTypes(configurable.Configurable):
+    CONFIGSPEC = [
+        "Number = integer(min=0, max=10, default=9)",
+        #"Float = float (min='0', max='1.111', default = '1.1')",
+        "Float = float(default=1)",
+        "TrueFalse = boolean(default=False)",
+        "IpAddress = ip_addr(default='10.0.0.1')",
+        "String = string(min=0,max=100, default='100 chars max')",
+        "Tuple = tuple(min=1, max=2, default=list('a','b'))",
+        "IntList = int_list(min=1, max=10, default =list(1,2))",
+        "FloatList = float_list(min=1, max=10, default =list('1.1',2))",
+        "BoolList = bool_list(min=1, max=10, "
+                               "default =list(True,False,0,'yes',no))",
+        "IpAddrList = ip_addr_list(min=1, max=10, "
+                       "default =list(10.10.10.1,1.1.1.1))",
+        "StringList = string_list(min=1, max=10, "
+                       "default =list('string1', 'string2'))",
+        #Mixed list does not have the default keyword, making this
+        # not useful for Configurable, which uses defaults extensively.
+        #"MixedList = Do not use.
+        "AlwaysOK = pass(default = None) ",
+        "OptionList  = option('red', 'blue', 'green',default='red' )",
+    ]
+
+    def __init__(self, config):
+        super(ClassWithAllTheConfigTypes, self).__init__(config)
 
 
 class TestConfigurableWithManyClasses(unittest.TestCase):
@@ -108,7 +135,7 @@ class TestConfigurableWithManyClasses(unittest.TestCase):
         tt = ConfigurableTestClass1()
         sub_configspec = configurable.get_section_of_configspec(
             tt.config.configspec, 'level_1')
-        ConfigurableOnlyNeedsLevel1.configspec = sub_configspec
+        ConfigurableOnlyNeedsLevel1.CONFIGSPEC = sub_configspec
         config = tt.get_default_config()
         section = configurable.get_section_of_config(config, 'level_1')
         tt1 = ConfigurableOnlyNeedsLevel1(section)
@@ -151,7 +178,7 @@ class TestConfigurableWithManyClasses(unittest.TestCase):
         """
         test_get_section_of_configspec_should_raise_on_missing_section
         """
-        configspec = ConfigurableTestClass1.configspec
+        configspec = ConfigurableTestClass1.CONFIGSPEC
         section = 'non_existant_section_name'
         with self.assertRaises(configurable.ConfigurationError):
             configspec_section = configurable.get_section_of_configspec(
@@ -161,7 +188,7 @@ class TestConfigurableWithManyClasses(unittest.TestCase):
         """
         test_get_section_of_configspec
         """
-        configspec = ConfigurableTestClass1.configspec
+        configspec = ConfigurableTestClass1.CONFIGSPEC
         section = 'level_1'
         configspec_section = configurable.get_section_of_configspec(
             configspec, section)
@@ -184,6 +211,14 @@ class test_configurable(unittest.TestCase):
     """
     Make a derived class of configurable
     """
+    def test_make_config_with_many_types_works(self):
+        """
+        test_make_config_with_many_types_works
+        """
+        config = ClassWithAllTheConfigTypes.get_default_config()
+        a = ClassWithAllTheConfigTypes(config)
+
+
     def test_configspec_creates_valid_default_config(self):
         """
         test_configspec_creates_valid_default_config

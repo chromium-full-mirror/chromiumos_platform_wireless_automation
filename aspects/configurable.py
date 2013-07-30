@@ -159,25 +159,113 @@ class Configurable(object):
     The derived class must:
         Specify a self.configspec as a class variable.
         Take in a  config object as a parameter to __init__, and
-        Call self.is_this_config_valid on the incoming config
+        Call the super constructor: Configurable.__init__()
 
-    Configspec Example:
-    MyNewClas(Configurable):
-        configspec = [
-        'channel=integer(min=0, max=9999, default=1)',
-        'scpi_hostname=string(default=lookup_in_labconfig)',
-        'port=integer(default=1234)',
-        'gpib_address=integer(min=0, max=999, default=14)',
-        'read_timeout_seconds=integer(min=0, max=100, default=3)',
-        'connect_timeout_seconds=integer(min=0, max=100, default=10)'
-        ]
+    Configspec Examples:
 
+        class MyNewClass(Configurable):
+            configspec = [
+            'channel=integer(min=0, max=9999, default=1)',
+            'scpi_hostname=string(default=lookup_in_labconfig)',
+            'port=integer(default=1234)',
+            'gpib_address=integer(min=0, max=999, default=14)',
+            'read_timeout_seconds=integer(min=0, max=100, default=3)',
+            'connect_timeout_seconds=integer(min=0, max=100, default=10)'
+            ]
+
+        class ClassWithAllTheConfigTypes(Configurable):
+            configspec = [
+                "Number = integer(min=0, max=10, default=9)",
+                "Float = float (min='0', max='1.111', default = '1.1')",
+                "TrueFalse = boolean(default=False)",
+                "IpAddress = ip_addr(default='10.0.0.1')",
+                "String = string(min=0,max=100, default='100 chars max')",
+                "Tuple = tuple(min=1, max=2, default=list('a','b'))",
+                "IntList = int_list(min=1, max=10, default =list(1,2))",
+                "FloatList = float_list(min=1, max=10, default =list('1.1',2))",
+                "BoolList = bool_list(min=1, max=10, "
+                                       "default =list(True,False,0,'yes',no))",
+                "IpAddrList = ip_addr_list(min=1, max=10, "
+                               "default =list(10.10.10.1,1.1.1.1))",
+                "StringList = string_list(min=1, max=10, "
+                               "default =list('string1', 'string2'))",
+                #Mixed list does not have the default keyword, making this
+                # not useful for Configurable, which uses default extensively.
+                #"MixedList = Do not use.
+                "AlwaysOK = pass(default = None) ",
+                "OptionList  = option('red', 'blue', 'green',default='red' )",
+            ]
 
     Usage Example:
     config = complex_object_class.get_default_config()
     config['only param I want to change'] = 'new and better value'
     if complex_object_class.is_this_config_valid(config):
         co = complex_obj(config)
+
+    A list of the available types from the configobj docs.
+
+    * 'integer': matches integer values (including negative)
+                 Takes optional 'min' and 'max' arguments : ::
+
+                   integer()
+                   integer(3, 9)  # any value from 3 to 9
+                   integer(min=0) # any positive value
+                   integer(max=9)
+
+    * 'float': matches float values
+               Has the same parameters as the integer check.
+
+    * 'boolean': matches boolean values - ``True`` or ``False``
+                 Acceptable string values for True are :
+                   true, on, yes, 1
+                 Acceptable string values for False are :
+                   false, off, no, 0
+
+                 Any other value raises an error.
+
+    * 'ip_addr': matches an Internet Protocol address, v.4, represented
+                 by a dotted-quad string, i.e. '1.2.3.4'.
+
+    * 'string': matches any string.
+                Takes optional keyword args 'min' and 'max'
+                to specify min and max lengths of the string.
+
+    * 'list': matches any list.
+              Takes optional keyword args 'min', and 'max' to specify min and
+              max sizes of the list. (Always returns a list.)
+
+    * 'tuple': matches any tuple.
+              Takes optional keyword args 'min', and 'max' to specify min and
+              max sizes of the tuple. (Always returns a tuple.)
+
+    * 'int_list': Matches a list of integers.
+                  Takes the same arguments as list.
+
+    * 'float_list': Matches a list of floats.
+                    Takes the same arguments as list.
+
+    * 'bool_list': Matches a list of boolean values.
+                   Takes the same arguments as list.
+
+    * 'ip_addr_list': Matches a list of IP addresses.
+                     Takes the same arguments as list.
+
+    * 'string_list': Matches a list of strings.
+                     Takes the same arguments as list.
+
+    #Mixed list does not have the default keyword, making this
+    # not useful for Configurable, which uses defaults extensively.
+    * 'mixed_list':  Not usable in Configurable.
+
+    * 'pass': This check matches everything ! It never fails
+              and the value is unchanged.
+
+              It is also the default if no check is specified.
+
+    * 'option': This check matches any from a list of options.
+                You specify this check with : ::
+
+                  option('option 1', 'option 2', 'option 3')
 
     """
     # The config spec(a ConfigObject term for the definition of the
@@ -196,15 +284,15 @@ class Configurable(object):
         """
         try:
             # Explicitly require a self.configspec
-            self.configspec
-        except AttributeError, e:
+            len(self.CONFIGSPEC) > 0
+        except AttributeError:
             error_message = \
                     'This class needs but does not have a self.configspec'
             log.critical(error_message)
             raise ConfigurationError(error_message)
 
         # Check the configspec for sanity.
-        self.configspec = self._convert_configspec_to_str_list(self.configspec)
+        self.CONFIGSPEC = self._convert_configspec_to_str_list(self.CONFIGSPEC)
 
         # Run get_default_config to verify the configspec is valid
         # We do this at construction to announce problems as early as possible
@@ -258,7 +346,7 @@ class Configurable(object):
         """
         # Make a new ConfigObj of our configspec and the incoming config
         new_config = configobj.ConfigObj(
-            dict(config), configspec=cls.configspec)
+            dict(config), configspec=cls.CONFIGSPEC)
         validator = validate.Validator()
         new_config.validate(
             validator,
@@ -283,6 +371,8 @@ class Configurable(object):
         """
         Verify that config passes validation against self.configspec
 
+        Raises an exception on bad configs.
+
         @param config: The config to check
 
         @return: True or False
@@ -294,7 +384,7 @@ class Configurable(object):
                     'ConfigObj')
         new_config = configobj.ConfigObj(
             dict(config),
-            configspec=cls.configspec)
+            configspec=cls.CONFIGSPEC)
         validator = validate.Validator()
         validate_results = new_config.validate(validator,
                                                preserve_errors=True, copy=True)
@@ -304,10 +394,17 @@ class Configurable(object):
         if (validate_results is True) and not extra_items:
             return True
 
-        log.critical('The config for this object is bad: ')
+        # An invalid config may have bad keys, which means we can't convert
+        # it to a string. If that happens, just print the keys.
+        try:
+            log.critical('This config is bad: %s ' % config)
+        except KeyError:
+            log.critical('This config with theses keys is bad: %s ' %
+                         config.keys())
+
         log.critical('Above config must conform to this configspec: ')
-        pretty_str = pprint.pformat(cls.configspec)
-        log.critical(pretty_str)
+        pretty_str = pprint.pformat(cls.CONFIGSPEC)
+        log.critical('\n' + pretty_str)
         if len(extra_items) > 0:
             log.critical('Extra (mispelled?) items: ')
             for item in extra_items:
@@ -344,7 +441,7 @@ class Configurable(object):
         @return: a ConfigObj with the default values filled in.
 
         """
-        configspec = cls._convert_configspec_to_str_list(cls.configspec)
+        configspec = cls._convert_configspec_to_str_list(cls.CONFIGSPEC)
         try:
             config = configobj.ConfigObj(configspec=configspec)
             validator = validate.Validator()
@@ -356,7 +453,7 @@ class Configurable(object):
             # by the above code means the config was bad, and we should
             # stop and print out useful debugging info.
             pretty_str = pprint.pformat(configspec)
-            log.critical('This configspec failed: %s \n' % pretty_str)
+            log.critical('This configspec failed: \n%s ' % pretty_str)
             log.exception(e)
-            raise ConfigurationError('get_default_config failed. ')
+            raise ConfigurationError(e.message)
         return config
