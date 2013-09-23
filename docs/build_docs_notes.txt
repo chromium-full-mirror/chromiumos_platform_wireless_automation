@@ -1,0 +1,5 @@
+
+cd sphinx-docs
+build html 
+gnome-open _build/html/index.html
+
