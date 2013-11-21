@@ -8,12 +8,15 @@ The OysterBayRack details. Derived from CallBoxRackInterface.
 from wireless_automation.aspects import configurable
 from wireless_automation.aspects import wireless_automation_logging
 from wireless_automation.duts import dut_factory
-from wireless_automation.instruments.call_box import call_box_factory
 from wireless_automation.instruments import rf_switch
+from wireless_automation.instruments.call_box import call_box_factory
 from wireless_automation.instruments.network_data_source \
     import network_data_source
 from wireless_automation.racks import call_box_rack_interface
-# OysterBayPxtDevelopmentRack looks abstract. TODO(byronk): do we need methods?
+
+# This class looks abstract because it doesn't have any functions.
+# It's used here as a container class, to hold both the parts of
+# rack, as well as the knowledge of how to setup that rack.
 # pylint: disable=interface-not-implemented
 
 
@@ -25,20 +28,19 @@ class OysterBayPxtDevelopmentRack(call_box_rack_interface.CallBoxRackInterface):
     # is part of that. Default values can change, but
     # changing entries suggests you don't want a derived class.
     base_configspec = call_box_rack_interface.CallBoxRackInterface.CONFIGSPEC
-    base_configspec = configurable.list_to_configspec(base_configspec)
+    CONFIGSPEC = configurable.list_to_configspec(base_configspec)
     # Change the IP's to the right ones for this lab
-    base_configspec['CallBoxFactory']['CallBox']['scpi_ip_address'] = \
+    CONFIGSPEC['CallBoxFactory']['CallBox']['scpi_ip_address'] = \
         "ip_addr(default='172.22.50.244')"
-    base_configspec['RfSwitch']['ip_address'] = \
-        "ip_addr(default='172.22.50.244')"
-    CONFIGSPEC = base_configspec
+    CONFIGSPEC['RfSwitch']['ip_address'] = \
+        "ip_addr(default='172.22.50.243')"
 
     def __init__(self, config):
         super(OysterBayPxtDevelopmentRack, self).__init__(config)
         self.log = wireless_automation_logging.setup_logging('Rack')
 
         cbf_config = config['CallBoxFactory']
-        self.call_box = call_box_factory.build_one(cbf_config)
+        self.call_box = call_box_factory.CallBoxFactory.build_one(cbf_config)
 
         rfs_config = config['RfSwitch']
         self.rf_switch = rf_switch.RfSwitch(rfs_config)
@@ -47,7 +49,8 @@ class OysterBayPxtDevelopmentRack(call_box_rack_interface.CallBoxRackInterface):
         self.dut = dut_factory.build_one(dut_config)
 
         cd_config = config['NetworkDataSource']
-        self.network_data_source = network_data_source.NetworkDataSource(cd_config)
+        self.network_data_source = (
+            network_data_source.NetworkDataSource(cd_config))
 
     def reset(self):
         """
