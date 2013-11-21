@@ -20,9 +20,12 @@ class CallBoxInterface(configurable.Configurable):
         'read_timeout_seconds=integer(min=0, max=100, default=3)',
         'connect_timeout_seconds=integer(min=0, max=100, default=10)'
     ]
-    call_states = ['']
-    call_connected_states = ['']
-    call_idle_states = ['']
+    ALL_STATES = []              # List of possible states
+    IDLE_STATES = []             # The state that means it's idle
+    REGISTERED_STATES = []
+    CONNECTED_STATES = []        # The states that count as connected
+    EXAMPLE_ID_STRING = "CallBoxInterface"  # The ID string *IDN? returns
+    MATCH_IN_EXAMPLE_ID_STRING = 'Interface'
 
     def __init__(self, config):
         super(CallBoxInterface, self).__init__(config)
@@ -57,15 +60,14 @@ class CallBoxInterface(configurable.Configurable):
 
     def is_connected(self):
         """
-        Returns true if the the call_state is in call_connected_states
+        Returns true if the the call_state is in CONNECTED_STATES
 
         """
         raise NotImplementedError
 
-    def _get_cell_status(self):
+    def is_registered(self):
         """
-        Private method, asks the call box what state it is in, and updated
-        returns it.
+        Returns true if the the call_state is in REGISTERED_STATES
 
         """
         raise NotImplementedError

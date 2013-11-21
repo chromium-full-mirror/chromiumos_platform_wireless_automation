@@ -16,13 +16,14 @@ from wireless_automation.instruments.call_box import call_box_fake
 
 class CallBoxFactory(configurable.Configurable):
     """
-    Generate a call box factory with a config,
-    then use build_one to use the factory to
-    build a call box object.
-    Or just use the buld_one function below.
+    Generate a call box factory with a config
+    >>> config = CallBoxFactory.get_default_config()
+    >>> call_box_factory = CallBoxFactory(config)
+    >>> call_box = call_box_factory.builder()
+
     """
     CONFIGSPEC = \
-        ['call_box_model=option("pxt","8960","fake", default="pxt")'] + \
+        ['call_box_model=option("pxt","8960","fake", default="fake")'] + \
         configurable.nest_configspecs([
             ('CallBox', call_box_interface.CallBoxInterface)
         ])
@@ -31,7 +32,7 @@ class CallBoxFactory(configurable.Configurable):
         super(CallBoxFactory, self).__init__(config)
         self.config = config
 
-    def build_one(self):
+    def builder(self):
         """
         Return one call box object.
         """
@@ -42,12 +43,12 @@ class CallBoxFactory(configurable.Configurable):
         if model == 'fake':
             return call_box_fake.CallBoxFakePxt(call_box_config)
 
-
-def build_one(config):
-    """
-    Returns one callbox, built to the incoming config
-    @param config: Config
-    @return: a CallBox that implements CallBoxInterface
-    """
-    factory = CallBoxFactory(config)
-    return factory.build_one()
+    @classmethod
+    def build_one(cls, config):
+        """
+        Returns one callbox, built to the incoming config
+        :param config: Config
+        :return: a CallBox that implements CallBoxInterface
+        """
+        factory = CallBoxFactory(config)
+        return factory.builder()

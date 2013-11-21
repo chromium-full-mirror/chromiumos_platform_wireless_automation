@@ -50,11 +50,6 @@ class CallBoxFakeBase(call_box_interface.CallBoxInterface):
     of call boxes may behave different, or a specific behaviour may be
     encoded in a call box to test a particular case.
     """
-    # These are empty because this is a base class.
-    ALL_STATES = []              # List of possible states
-    IDLE_STATES = []             # The state that means it's idle
-    CONNECTED_STATES = []        # The states that count as connected
-    EXAMPLE_ID_STRING = "*idn? return"  # The ID string *IDN? returns
 
     @log_args_and_return_values
     def __init__(self, config):
@@ -89,6 +84,9 @@ class CallBoxFakeBase(call_box_interface.CallBoxInterface):
 
     @log_args_and_return_values
     def _get_cell_status(self):
+        """
+        :return: The |current_state| of the call
+        """
         return self._current_state
 
     @log_args_and_return_values
