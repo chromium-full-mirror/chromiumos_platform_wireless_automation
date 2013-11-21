@@ -18,9 +18,20 @@ from wireless_automation.racks import oyster_bay_rack
 
 
 class CellularSmoke(configurable.Configurable):
+    """
+    CellularSmoke connects over LTE to a call box and downloads a web page.
+
+    """
     CONFIGSPEC = ["config_stuff=string(default='CellularSmokeConfig')"]
 
     def __init__(self, config):
+        """
+        :param config: ConfigObj object
+        :type config: :class:wireless_automation.aspects.configobj.ConfigObj:
+        :rtype None: No return type
+
+        The constructor.
+        """
         super(CellularSmoke, self).__init__(config)
         config = oyster_bay_rack.\
             OysterBayPxtDevelopmentRack.get_default_config()
@@ -29,10 +40,9 @@ class CellularSmoke(configurable.Configurable):
 
     def run(self):
         """
-        From Requirement:
-        Description:
+        :param None:
 
-        @return:
+        Runs the test. Used by external frameworks.
         """
         # Arrange
         self.rack.call_box.start()
