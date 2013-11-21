@@ -95,10 +95,10 @@ class ClassWithAllTheConfigTypes(configurable.Configurable):
         "Tuple = tuple(min=1, max=2, default=list('a','b'))",
         "IntList = int_list(min=1, max=10, default =list(1,2))",
         "FloatList = float_list(min=1, max=10, default =list('1.1',2))",
-        "BoolList = bool_list(min=1, max=10, "
-                               "default =list(True,False,0,'yes',no))",
+        "BoolList =  bool_list(min=1, max=10, "
+                     "default =list(True,False,0,'yes',no))",
         "IpAddrList = ip_addr_list(min=1, max=10, "
-                       "default =list(10.10.10.1,1.1.1.1))",
+                     "default =list(10.10.10.1,1.1.1.1))",
         "StringList = string_list(min=1, max=10, "
                        "default =list('string1', 'string2'))",
         #Mixed list does not have the default keyword, making this
@@ -184,7 +184,6 @@ class TestConfigurableWithManyClasses(unittest.TestCase):
         print "\n".join(config.configspec.write())
         test_class = ManyConfigSpecs(config)
 
-
     def test_write_and_read_config_file(self):
         """
         test_write_and_read_config_file
@@ -253,7 +252,7 @@ class TestConfigurableWithManyClasses(unittest.TestCase):
         section = 'non_existant_section_name'
         with self.assertRaises(configurable.ConfigurationError):
             configspec_section = configurable.get_section_of_configspec(
-                    configspec, section)
+                configspec, section)
 
     def test_get_section_of_configspec(self):
         """
@@ -305,7 +304,8 @@ class TestConfigurable(unittest.TestCase):
             """
             bad_config = copy.copy(default_config)
             bad_config[key] = value
-            self.assertFalse(tt.is_this_config_valid(bad_config))
+            is_valid = tt.is_this_config_valid(bad_config)
+            self.assertFalse(is_valid)
 
         add_bad_data_and_check('topnumber', '111')  # Too large
         add_bad_data_and_check('flavors', 'not_in_spec')
@@ -384,9 +384,10 @@ class TestConfigurable(unittest.TestCase):
         test_get_items_in_config_not_in_configspec
         """
         config = ConfigurableTestClass1.get_default_config()
+        configspec = ConfigurableTestClass1.CONFIGSPEC
         config['extra_junk'] = 33
-        extras = ConfigurableTestClass1.\
-            _get_items_in_config_not_in_configspec(config)
+        extras = configurable.get_items_in_config_not_in_configspec(
+                 configspec, config)
         self.assertEqual(extras[0][1], 'extra_junk')
 
     def test_invalid_config_list_raises_error(self):

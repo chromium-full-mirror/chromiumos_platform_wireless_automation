@@ -170,6 +170,7 @@ class NetworkDataSource(configurable.Configurable):
         """
         if self.fake_hardware:
             self.log.info('Fake running a download test..')
+<<<<<<< HEAD
 
         results = {"date": '121212',
                    "source_ip": self.ip_address,
@@ -183,6 +184,19 @@ class NetworkDataSource(configurable.Configurable):
                    }
 
         return results
+=======
+            results = {"date": '121212',
+                       "source_ip": self.ip_address,
+                       "source_port": self.port,
+                       "dest_ip": self.ip_address,
+                       "dest_port": self.port,
+                       "id": '1',
+                       "seconds": '10',
+                       "bytes": '1000',
+                       "bytes_per_second": '100'
+                       }
+            return results
+>>>>>>> 0b8c9f5... Added config subsetting and joining
 
         cmd = ["iperf",
                "--reportstyle", "C",

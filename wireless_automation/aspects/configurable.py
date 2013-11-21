@@ -1,17 +1,19 @@
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
 """
-Configurable: A base class. Provides methods to read, and verify configuration.
+:py:class:`Configurable`: A base class. Provides methods to read,
+    and verify configuration.
 
-read_config_from_file: Reads a config text file and returns a config object
+:py:func:`read_config_from_file`: Reads a config text file and
+    returns a config object
 
-get_section_of_config: Returns a subsection of the configspec
+:py:func:`get_section_of_config`: Returns a subsection of the configspec
 
-get_section_of_configspec: Returns a subsection of the config
+:py:func:`get_section_of_configspec`: Returns a subsection of the config
 
-ConfigurationError: The exception type thrown by the Configurable functions
+:py:class:`ConfigurationError`: The exception type thrown by the
+    Configurable functions
 """
 
 import collections
@@ -32,14 +34,69 @@ class ConfigurationError(wireless_automation_error.WirelessAutomationError):
     pass
 
 
+def configobj_values_to_types(config):
+    """
+    :param config: ConfigObj
+
+    :returns: ConfigObj with values converted to the correct types
+
+    """
+    assert isinstance(config, configobj.ConfigObj)
+    validator = validate.Validator()
+    config.validate(validator, preserve_errors=True, copy=True)
+    return config
+
+
+def merge_two_configs(base_config, extension_config):
+    """
+    Merges two configs.
+
+    Example:
+    base_config = {'temperature': 43, 'day': 'monday'}
+    extension_config = {'temperature': 99, 'color': 'red'}
+    returns :  {'temperature': 99, 'day': 'monday', 'color': 'red'}
+
+    :param base_config:  ConfigObj
+
+    :param extension_config:  ConfigObj
+
+    :return: base_config filled in with data from extension_config.
+
+    """
+    assert isinstance(base_config, configobj.ConfigObj)
+    assert isinstance(extension_config, configobj.ConfigObj)
+    base_config.merge(extension_config)
+    return base_config
+
+
+def get_items_in_config_not_in_configspec(configspec, config):  # pylint: disable=C0103,C0301
+    """
+    :param config: ConfigObj
+
+    :returns: a list of items in config, but not in self.configspec.
+
+    This happens when a config value is misspelled.
+
+    """
+    # Make a new ConfigObj of our configspec and the incoming config
+    new_config = configobj.ConfigObj(
+        dict(config), configspec=configspec)
+    validator = validate.Validator()
+    new_config.validate(
+        validator,
+        preserve_errors=True, copy=True)
+    extra_items = configobj.get_extra_values(new_config)
+    return extra_items
+
+
 def configobj_to_string(config):
     """
     This takes the output of configobj.write() and returns
     the string. No file IO needed. To load and save files,
     use the configobj.write and read.
 
-    @param config: a Configobj.
-    @return: a string that is the config file of that configobj
+    :param config: a Configobj.
+    :returns: a string that is the config file of that configobj
     """
     #fh = StringIO.StringIO()
     #config.write(fh)
@@ -52,9 +109,9 @@ def read_config_from_file(file_name):
     """
     Read a config from a file.
 
-    @param file_name: The file to read.
+    :param file_name: The file to read.
 
-    @return: a ConfigObj containing the data.
+    :returns: a ConfigObj containing the data.
         This will have no configspec, only the data.
 
     """
@@ -65,8 +122,13 @@ def list_to_configspec(string_list):
     """
     Takes in a CONFIGSPEC formatted as a list of strings and
     converts it to a configobj object.
-    @param string_list: Input configspec in list of strings format.
-    @return: A configobj object with that configspec
+    ::
+        x = list_to_configspec(str_list)
+        print x
+
+    :param string_list: Input configspec in list of strings format.
+
+    :returns: A configobj object with that configspec
     """
     try:
         return configobj.ConfigObj(configspec=string_list).configspec
@@ -81,9 +143,9 @@ def configspec_to_str_list(configspec):
     """
     Convert the configobj to a CONFIGSPEC list of strings.
 
-    @param configspec: config spec of type str or list or Section
+    :param configspec: config spec of type str or list or Section
 
-    @return: config spec of type list
+    :returns: config spec of type list
 
     """
     if isinstance(configspec, list):
@@ -104,8 +166,8 @@ def nest_configspecs(tuple_list):
     other classes. It can build subsections in it's CONFIGSPEC
     from the other classes CONFIGSPEC.
 
-    @param tuple_list:  a list of tuples of ('name',Class)
-    @return: A list of strings.
+    :param tuple_list:  a list of tuples of ('name',Class)
+    :returns: A list of strings.
     """
 
     combined_strings = []
@@ -124,7 +186,7 @@ def nest_configspecs(tuple_list):
         else:
             raise ConfigurationError('get_section_of_configspec needs ConfigObj'
                                      ' or list, not %s ' % type(configspec))
-        #  Convert to a string, like what would be in a file
+        #  Convert to a list of strings, like what would be in a file
         strings = configspec.write()
         #  Change all the [] to [[]] to indent them all one more level
         strings = [re.sub('\[(.*)\]', '[[\\1]]', x) for x in strings]  # pylint: disable=anomalous-backslash-in-string,line-too-long
@@ -156,11 +218,11 @@ def get_section_of_configspec(configspec, section_name):
 
         Note the removed [] around SubSection
 
-    @param configspec: The configspec
+    :param configspec: The configspec
 
-    @param section_name:  The name of the section to return
+    :param section_name:  The name of the section to return
 
-    @return: A subsection of the passed in configspec.
+    :returns: A subsection of the passed in configspec.
 
     """
     if isinstance(configspec, configobj.ConfigObj):
@@ -201,11 +263,11 @@ def get_section_of_config(config, section_name):
         power=33
         freq=1889.8
 
-    @param config: The config to copy the section from
+    :param config: The config to copy the section from
 
-    @param section_name: the top level section name
+    :param section_name: the top level section name
 
-    @return: The section as a ConfigObj
+    :returns: The section as a ConfigObj
 
     """
     section = config[section_name]
@@ -235,9 +297,9 @@ def combine_configs(tuple_list):
         power=33
         freq=1889.8
 
-    @param tuple_list: list of ('name',ConfigObj)
+    :param tuple_list: list of ('name',ConfigObj)
 
-    @return: a ConfigObj composed of the sub sections, while maintaining order.
+    :returns: a ConfigObj composed of the sub sections, while maintaining order.
 
     """
     log = logging.getLogger(LOG_NAME)
@@ -275,16 +337,16 @@ class Configurable(object):
     is checked against this. This provides a single location to specify what
     input an object needs, and a way to verify the incoming config.
 
-    Public API:
-    get_default_config()
-    is_this_config_valid()
+    :Public API ::
+        get_default_config()
+        is_this_config_valid()
 
-    The derived class must:
+    :The derived class must :
         *Specify a self.configspec as a class variable.
         *Take in a  config object as a parameter to __init__, and
         *Call the super constructor: Configurable.__init__()
 
-    Configspec Examples: ::
+    :Configspec Examples :
 
         class MyNewClass(Configurable):
             configspec = [
@@ -319,77 +381,77 @@ class Configurable(object):
                 "OptionList  = option('red', 'blue', 'green',default='red' )",
             ]
 
-    Usage Example: ::
+    :Usage Example :
 
         config = complex_object_class.get_default_config()
         config['only param I want to change'] = 'new and better value'
         if complex_object_class.is_this_config_valid(config):
             co = complex_obj(config)
 
-    A list of the available types from the configobj docs.
+    :A list of the available types from the configobj docs:
 
-    * 'integer': matches integer values (including negative)
-                 Takes optional 'min' and 'max' arguments : ::
+        * 'integer': matches integer values (including negative)
+                     Takes optional 'min' and 'max' arguments : ::
 
-                   integer()
-                   integer(3, 9)  # any value from 3 to 9
-                   integer(min=0) # any positive value
-                   integer(max=9)
+                       integer()
+                       integer(3, 9)  # any value from 3 to 9
+                       integer(min=0) # any positive value
+                       integer(max=9)
 
-    * 'float': matches float values
-               Has the same parameters as the integer check.
+        * 'float': matches float values
+                   Has the same parameters as the integer check.
 
-    * 'boolean': matches boolean values - ``True`` or ``False``
-                 Acceptable string values for True are :
-                   true, on, yes, 1
-                 Acceptable string values for False are :
-                   false, off, no, 0
+        * 'boolean': matches boolean values - ``True`` or ``False``
+                     Acceptable string values for True are :
+                       true, on, yes, 1
+                     Acceptable string values for False are :
+                       false, off, no, 0
 
-                 Any other value raises an error.
+                     Any other value raises an error.
 
-    * 'ip_addr': matches an Internet Protocol address, v.4, represented
-                 by a dotted-quad string, i.e. '1.2.3.4'.
+        * 'ip_addr': matches an Internet Protocol address, v.4, represented
+                     by a dotted-quad string, i.e. '1.2.3.4'.
 
-    * 'string': matches any string.
-                Takes optional keyword args 'min' and 'max'
-                to specify min and max lengths of the string.
+        * 'string': matches any string.
+                    Takes optional keyword args 'min' and 'max'
+                    to specify min and max lengths of the string.
 
-    * 'list': matches any list.
-              Takes optional keyword args 'min', and 'max' to specify min and
-              max sizes of the list. (Always returns a list.)
+        * 'list': matches any list.
+                  Takes optional keyword args 'min', and 'max' to specify
+                  min and max sizes of the list. (Always returns a list.)
 
-    * 'tuple': matches any tuple.
-              Takes optional keyword args 'min', and 'max' to specify min and
-              max sizes of the tuple. (Always returns a tuple.)
+        * 'tuple': matches any tuple.
+                  Takes optional keyword args 'min', and 'max' to specify
+                  min and max sizes of the tuple. (Always returns a tuple.)
 
-    * 'int_list': Matches a list of integers.
-                  Takes the same arguments as list.
+        * 'int_list': Matches a list of integers.
+                      Takes the same arguments as list.
 
-    * 'float_list': Matches a list of floats.
-                    Takes the same arguments as list.
+        * 'float_list': Matches a list of floats.
+                        Takes the same arguments as list.
 
-    * 'bool_list': Matches a list of boolean values.
-                   Takes the same arguments as list.
+        * 'bool_list': Matches a list of boolean values.
+                       Takes the same arguments as list.
 
-    * 'ip_addr_list': Matches a list of IP addresses.
-                     Takes the same arguments as list.
+        * 'ip_addr_list': Matches a list of IP addresses.
+                         Takes the same arguments as list.
 
-    * 'string_list': Matches a list of strings.
-                     Takes the same arguments as list.
+        * 'string_list': Matches a list of strings.
+                         Takes the same arguments as list.
 
-    #Mixed list does not have the default keyword, making this
-    # not useful for Configurable, which uses defaults extensively.
-    * 'mixed_list':  Not usable in Configurable.
+        #Mixed list does not have the default keyword, making this
+        # not useful for Configurable, which uses defaults extensively.
+        * 'mixed_list':  Not usable in Configurable.
 
-    * 'pass': This check matches everything ! It never fails
-              and the value is unchanged.
+        * 'pass': This check matches everything ! It never fails
+                  and the value is unchanged.
 
-              It is also the default if no check is specified.
+                  It is also the default if no check is specified.
 
-    * 'option': This check matches any from a list of options.
-                You specify this check with : ::
+        * 'option': This check matches any from a list of options.
+                    You specify this check with : ::
 
-                  option('option 1', 'option 2', 'option 3')
+                      option('option 1', 'option 2', 'option 3')
 
     """
     # The config spec(a ConfigObject term for the definition of the
@@ -403,7 +465,7 @@ class Configurable(object):
 
         Require the derived class to have self.configspec defined
 
-        @param: input_config_data: Either a string or a list of string
+        :param input_config_data: Either a string or a list of string
                 containing the configuration options and data.
 
         """
@@ -428,72 +490,16 @@ class Configurable(object):
         # combine the passed in config with the default values.
         # This way the incoming config could be empty, or have a single value.
         input_config_obj = configobj.ConfigObj(input_config_data)
-        config = self._merge_two_configs(default_config, input_config_obj)
+        config = merge_two_configs(default_config, input_config_obj)
 
         if self.is_this_config_valid(config):
             # Convert the string values to ints and floats
-            self.config = self._de_string_configobj(config)
+            self.config = configobj_values_to_types(config)
         else:
             raise ConfigurationError(
                 'config data does not match the configspec of the object:\n\n'
                 '%s \n\n\n\n %s ' % ('\n'.join(config.write()),
                                      '\n'.join(self.CONFIGSPEC)))
-
-    @classmethod
-    def _merge_two_configs(cls, base_config, extension_config):
-        """
-        Merges two configs.
-
-        Example:
-        base_config = {'temperature': 43, 'day': 'monday'}
-        extension_config = {'temperature': 99, 'color': 'red'}
-        returns :  {'temperature': 99, 'day': 'monday', 'color': 'red'}
-
-        @param base_config:  ConfigObj
-
-        @param extension_config:  ConfigObj
-
-        @return: base_config filled in with data from extension_config.
-
-
-        """
-        assert isinstance(base_config, configobj.ConfigObj)
-        assert isinstance(extension_config, configobj.ConfigObj)
-        base_config.merge(extension_config)
-        return base_config
-
-    @classmethod
-    def _get_items_in_config_not_in_configspec(cls, config):  # pylint: disable=C0103,C0301
-        """
-        @param config: ConfigObj
-
-        @return: a list of items in config, but not in self.configspec.
-
-        This happens when a config value is misspelled.
-
-        """
-        # Make a new ConfigObj of our configspec and the incoming config
-        new_config = configobj.ConfigObj(
-            dict(config), configspec=cls.CONFIGSPEC)
-        validator = validate.Validator()
-        new_config.validate(
-            validator,
-            preserve_errors=True, copy=True)
-        extra_items = configobj.get_extra_values(new_config)
-        return extra_items
-
-    @classmethod
-    def _de_string_configobj(cls, config):
-        """
-        @param config: ConfigObj
-
-        @return: ConfigObj with values converted to the correct types
-
-        """
-        assert isinstance(config, configobj.ConfigObj)
-        validator = validate.Validator()
-        config.validate(validator, preserve_errors=True, copy=True)
-        return config
 
     @classmethod
     def is_this_config_valid(cls, config):
@@ -502,9 +508,9 @@ class Configurable(object):
 
         Raises an exception on bad configs.
 
-        @param config: The config to check
+        :param config: The config to check
 
-        @return: True or False
+        :returns: True or False
 
         """
         log = logging.getLogger(LOG_NAME)
@@ -551,7 +557,7 @@ class Configurable(object):
     @classmethod
     def get_default_config(cls):
         """
-        @return: a ConfigObj with the default values filled in.
+        :returns: a ConfigObj with the default values filled in.
 
         """
         configspec = configspec_to_str_list(cls.CONFIGSPEC)
