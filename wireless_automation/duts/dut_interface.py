@@ -13,7 +13,7 @@ class DutInterface(configurable.Configurable):
     Interface definition for Devices Under Test. Could be Chromebooks,
     could be iOS phones, could be Android devices.
     """
-    CONFIGSPEC = ['config_stuff = string(default="stuff")']
+    CONFIGSPEC = ['modem_interface=option("altair","dummy",default="dummy")']
 
     def __init__(self, config):
         """

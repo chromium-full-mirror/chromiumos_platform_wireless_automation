@@ -12,7 +12,8 @@ class RfSwitch(configurable.Configurable):
     Control of a RF Switch.
     """
     CONFIGSPEC = ['ip_address=ip_addr(default="0.0.0.0")',
-                  'state=boolean(default=False)'
+                  'port=integer(default=0)',
+                  'position=integer(default=0)'
                   ]
 
     def __init__(self, config):

@@ -121,8 +121,6 @@ class PrologixScpiDriver(object):
 
     def close(self):
         """Closes the socket."""
-        caller = list(self.scpi_logger.findCaller())
-        caller[0] = os.path.basename(caller[0])
         self.scpi_logger.info('Close called by :' + str(caller))
         try:
             self.scpi_logger.error('Closing prologix devices at : %s ' %
