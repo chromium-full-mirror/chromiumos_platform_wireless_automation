@@ -5,12 +5,12 @@
 The data source for downloading data for speed tests and connectivity tests.
 """
 
+import os
+import pexpect
 from wireless_automation.aspects import configurable
 from wireless_automation.aspects import wireless_automation_error
 from wireless_automation.aspects import wireless_automation_logging
-import os
-import pexpect
-import subprocess
+
 
 class LogIt(object):
     """
@@ -25,7 +25,10 @@ class LogIt(object):
         This looks like the write function of stdout, but
         redirect to the debug logger.
         """
-        self.log.debug(message)
+        if not message:
+            return
+        self.log.debug(message.replace('\n', ' '))
+        self.log.debug(message.replace('\r', ''))
 
     def flush(self):
         """
@@ -36,24 +39,32 @@ class LogIt(object):
 
 
 class NetworkDataSource(configurable.Configurable):
+    #pylint: disable=too-many-instance-attributes
     """
     A class to control a networked data source. Networking
     tests can be performed against this server to measure
-    download speed.  We may support a simple http server,
-    and an iperf server.
+    download speed.  An iperf server is implemented.
 
-    Right now, this concept is implemented as a custom
-    setup stumpy. Nobody has written down how it was setup.
-    At some point, that setup should be stored here.
     """
-    CONFIGSPEC = ["ip_address = ip_addr(default ='172.22.75.35')",
-                  "seconds = integer(default=10)",
-                  "port = integer(default=5001)",
+    CONFIGSPEC = ["# SSH connection params",
+                  "ssh_ip_address = ip_addr()",
+                  "ssh_port = integer(default=22)",
                   "password = string(default='test0000')",
+                  "# Iperf server port",
+                  '# The iperf/netperf ip address may be different then the',
+                  '# ssh address, if the network data source has two',
+                  '# ethernet interfaces',
+                  "data_ip_address = ip_addr(default ='172.22.50.9')",
+                  "iperf_port = integer(default=5001)",
+                  "# Disable the iperf server bring up ",
+                  "# if a server is pre configured",
+                  'start_iperf_server = boolean(default=True)',
+                  '# Netperf',
+                  'start_netperf_server = boolean(default=True)',
+                  "netperf_port = integer(default=5001)",
+                  '# Time to run either a netperf or iperf test',
                   '# Fake all hardware. Will run in a VM',
                   'fake_hardware = boolean(default=false)',
-                  '# Disable the iperf server bring up if a server is pre configured',
-                  'start_iperf_server = boolean(default=false)'
                   ]
 
     def __init__(self, config):
@@ -63,14 +74,53 @@ class NetworkDataSource(configurable.Configurable):
         super(NetworkDataSource, self).__init__(config)
         self.log = wireless_automation_logging.setup_logging('NetDataSource')
         self.connection = None
-        self.ip_address = config['ip_address']
-        self.seconds = config['seconds']
-        self.port = config['port']
+        self.ssh_ip_address = config['ssh_ip_address']
+        self.ssh_port = config['ssh_port']
+        self.data_ip_address = config['data_ip_address']
+        self.iperf_port = config['iperf_port']
+        self.netperf_port = config['netperf_port']
         self.password = config['password']
         self.fake_hardware = config['fake_hardware']
-        self.iperf_server_init = config['start_iperf_server']
-        self._ping_host_or_raise()
+        self.start_iperf_server = config['start_iperf_server']
+        self.start_netperf_server = config['start_netperf_server']
+        self._ping_host_or_raise(self.ssh_ip_address)
         self.connection = self._start_iperf_server_on_test_image()
+        self.connection = self._start_netperf_server_on_remote_test_image()
+
+    # pylint: disable=invalid-name
+    def _start_netperf_server_on_remote_test_image(self):
+        """
+        Starts the iperf server. This method expects the machine
+        to be running a chromeos test image. It makes assumptions
+        about iperf and iptables, and the login that are true for
+        chromeos test images.
+        """
+        if not self.start_netperf_server or self.fake_hardware:
+            self.log.info('Not starting netperf...')
+            return None
+        # SSH will open an X11 window to prompt for the password.
+        self.log.info('Starting iperf on network data server')
+        os.environ['SSH_ASKPASS'] = '0'
+        cmd = 'ssh -p %s -o StrictHostKeyChecking=no -o ' \
+              'UserKnownHostsFile=/dev/null root@%s' % \
+              (self.ssh_port, self.ssh_ip_address)
+        self.log.debug(cmd)
+        connection = pexpect.spawn(cmd, logfile=LogIt(self.log), timeout=5)
+        connection.expect('(?i)password:')
+        connection.sendline(self.password)
+        connection.expect('#')
+        self.log.info('Logging in to remote data source  '
+                      ' to start netperf at %s' %
+                      self.ssh_ip_address)
+        connection.sendline('netserver -p %s' % self.netperf_port)
+        try:
+            connection.expect('(?i)starting', timeout=1)
+        except pexpect.TIMEOUT:
+            self.log.error("Sending the netserver command timed out. "
+                           "Is netserver installed? ")
+            raise
+        #self.log.info(connection.before + connection.after)
+        return connection
 
     def _start_iperf_server_on_test_image(self):
         """
@@ -79,64 +129,83 @@ class NetworkDataSource(configurable.Configurable):
         about iperf and iptables, and the login that are true for
         chromeos test images.
         """
-        if not self.iperf_server_init or self.fake_hardware:
+        if not self.start_iperf_server or self.fake_hardware:
+            self.log.info('Not starting iperf...')
             return None
         # SSH will open an X11 window to prompt for the password.
+        self.log.info('Starting iperf on network data server')
         os.environ['SSH_ASKPASS'] = '0'
-        cmd = 'ssh -o StrictHostKeyChecking=no -o '\
-              'UserKnownHostsFile=/dev/null root@%s' % self.ip_address
+        cmd = 'ssh -p %s -o StrictHostKeyChecking=no -o '\
+              'UserKnownHostsFile=/dev/null root@%s' % \
+              (self.ssh_port, self.ssh_ip_address)
         self.log.debug(cmd)
         connection = pexpect.spawn(cmd, logfile=LogIt(self.log), timeout=5)
         connection.expect('(?i)password:')
         connection.sendline(self.password)
         connection.expect('#')
-        self.log.info('Logging in to remote data source at %s' %
-                      self.ip_address)
-        self.log.info(connection.before + connection.after)
+        self.log.info('Logging in to remote data source to start iperf at %s' %
+                      self.ssh_ip_address)
         self.log.info('running on dut: killall -9 iperf ')
         connection.sendline('killall -9 iperf')
         connection.sendline('iptables -I INPUT -p tcp --dport 5001 -j ACCEPT')
         connection.sendline('iptables -I OUTPUT -p tcp --sport 5001 -j ACCEPT')
-        connection.sendline('iperf -s --port %s &' % self.port)
+        connection.sendline('iperf -s --port %s &' % self.iperf_port)
         try:
             connection.expect('(?i)default', timeout=1)
         except pexpect.TIMEOUT:
             self.log.error("Sending the iperf command timed out. "
                            "Not installed? ")
             raise
-        self.log.info(connection.before + connection.after)
         return connection
 
-    def _ping_host_or_raise(self):
+    def _ping_host_or_raise(self, ip_address):
         """
         Check to see if the iperf host is reachable.
         :return: Raises an exception if ping fails
         """
         if self.fake_hardware:
-            return
-        import os
-        cmd = "ping -c 1 -w 2 " + self.ip_address + " > /dev/null 2>&1"
-        self.log.debug(cmd)
-        if self.fake_hardware:
             self.log.debug("In Fake mode, don't actually ping")
             return
+        cmd = "ping -c 1 -w 2 " + ip_address + " > /dev/null 2>&1"
+        self.log.debug(cmd)
         response = os.system(cmd)
-        #and then check the response...
         if response == 0:
             self.log.debug('ping worked')
             return
         else:
             self.log.debug('ping failed')
             raise wireless_automation_error.ConnectionFailure(
-                'iperf host is not responding to ping')
+                'iperf host is not responding to ping: %s ' % ip_address)
 
     def stop(self):
+        """
+        Calls the stop functions for iperf and netperf
+        :return:
+        """
+        self.stop_iperf()
+        self.stop_netperf()
+
+    def stop_netperf(self):
+        """
+        Stop the netperf process on the remote data server
+        :return:
+        """
+        self.log.info('Stopping and disconnecting from the network data server')
+        if self.fake_hardware:
+            self.log.info('Fake stopping netperf.')
+            return
+        # If we fail to finish the _start method, connection will be None.
+        if not self.connection:
+            return
+        self.connection.sendline('killall netserver > /dev/null')
+
+    def stop_iperf(self):
         """
         Stops the network server.
         """
         self.log.info('Stopping and disconnecting from the network data server')
         if self.fake_hardware:
-            self.log('Fake stopping iperf.')
+            self.log.info('Fake stopping iperf.')
             return
         # If we fail to finish the _start method, connection will be None.
         if self.connection is None:
@@ -154,70 +223,3 @@ class NetworkDataSource(configurable.Configurable):
             self.log.debug('Fake del.')
             return
         self.stop()
-
-    @staticmethod
-    def get_download_url():
-        """
-        Returns the URL to download from
-        """
-        pass
-
-    def run_iperf_download_test(self):
-        """
-        Run one iperf test from the machine we are on to the remote at
-        self.ip_address
-        :return: A dict with the results.
-        """
-        if self.fake_hardware:
-            self.log.info('Fake running a download test..')
-<<<<<<< HEAD
-
-        results = {"date": '121212',
-                   "source_ip": self.ip_address,
-                   "source_port": self.port,
-                   "dest_ip": self.ip_address,
-                   "dest_port": self.port,
-                   "id": '1',
-                   "seconds": '10',
-                   "bytes": '10',
-                   "bytes_per_second": '1'
-                   }
-
-        return results
-=======
-            results = {"date": '121212',
-                       "source_ip": self.ip_address,
-                       "source_port": self.port,
-                       "dest_ip": self.ip_address,
-                       "dest_port": self.port,
-                       "id": '1',
-                       "seconds": '10',
-                       "bytes": '1000',
-                       "bytes_per_second": '100'
-                       }
-            return results
->>>>>>> 0b8c9f5... Added config subsetting and joining
-
-        cmd = ["iperf",
-               "--reportstyle", "C",
-               "-c", self.ip_address,
-               "--port", str(self.port)]
-        self.log.info(cmd)
-        iperf = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        (stdout, _) = iperf.communicate()
-        stdout = stdout.rstrip()
-        out = stdout.split(',')
-        if len(out) < 8:
-            self.log.error('iperf returned a too short result : %s ' % out)
-            return None
-        results = {"date": out[0],
-                   "source_ip": out[1],
-                   "source_port": out[2],
-                   "dest_ip": out[3],
-                   "dest_port": out[4],
-                   "id": out[5],
-                   "seconds": out[6],
-                   "bytes": out[7],
-                   "bytes_per_second": out[8],
-                   }
-        return results

@@ -22,8 +22,10 @@ class LocalIperf(object):
 
     def __enter__(self):
         self._iperf_process = subprocess.Popen(['iperf', '-s'])
-        self.config['ip_address'] = '127.0.0.1'
-        self.config['start_iperf_server'] = False
+        self.config['ssh_ip_address'] = '127.0.0.1'
+        self.config['start_iperf_server'] = True
+        self.config['start_netperf_server'] = True
+        self.config['fake_hardware'] = True
         # Iperf take a bit to get going.
         time.sleep(0.5)
         return self
@@ -39,9 +41,11 @@ class TestNetworkDataSource(unittest.TestCase):
         Test the ping function on an unreachable host
         """
         config = network_data_source.NetworkDataSource.get_default_config()
-        config['ip_address'] = '129.0.0.1'
-        with self.assertRaises(wireless_automation_error.ConnectionFailure):
-            nds = network_data_source.NetworkDataSource(config)
+        with LocalIperf(config) as iperf:
+            iperf.config['ssh_ip_address'] = '129.0.0.1'
+            iperf.config['fake_hardware'] = False
+            with self.assertRaises(wireless_automation_error.ConnectionFailure):
+                nds = network_data_source.NetworkDataSource(iperf.config)
 
     def test_ping_local_host_passes(self):
         """
@@ -49,28 +53,12 @@ class TestNetworkDataSource(unittest.TestCase):
         """
         config = network_data_source.NetworkDataSource.get_default_config()
         with LocalIperf(config) as iperf:
-            nds = network_data_source.NetworkDataSource(iperf.config)
+            network_data_source.NetworkDataSource(iperf.config)
 
-    def test_fake_iperf(self):
+    def test_fake(self):
         """
         Fake out all hardware and run. This will run in a VM.
         """
         config = network_data_source.NetworkDataSource.get_default_config()
-        config['start_iperf_server'] = True
-        config['fake_hardware'] = True
-        nds = network_data_source.NetworkDataSource(config)
-        results = nds.run_iperf_download_test()
-        print results
-
-    def test_local_iperf(self):
-        """
-        Run an iperf test against a local iperf server.
-        """
-        config = network_data_source.NetworkDataSource.get_default_config()
         with LocalIperf(config) as iperf:
-            nds = network_data_source.NetworkDataSource(iperf.config)
-            results = nds.run_iperf_download_test()
-            assert results is not None
-            print 'results:'
-            print (results)
-
+            network_data_source.NetworkDataSource(iperf.config)

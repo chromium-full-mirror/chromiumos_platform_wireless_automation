@@ -1,4 +1,4 @@
-pylint==1.0.0
+pylint==1.1.0
 pep8==1.4.6
 epydoc==3.0.1
 sphinx=1.0
