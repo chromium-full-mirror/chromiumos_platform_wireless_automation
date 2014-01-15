@@ -36,6 +36,4 @@ class test_measurement_list(unittest.TestCase):
         self.the_list.append(name='name_here', value='value_here')
         self.the_list.append(name='name_here2', value='value_here2')
         answer = "name_here,value_here\n" + "name_here2,value_here2"
-        print "-------"
-        print answer
         assert str(self.the_list) == answer
