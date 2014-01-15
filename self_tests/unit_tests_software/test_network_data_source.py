@@ -61,4 +61,8 @@ class TestNetworkDataSource(unittest.TestCase):
         """
         config = network_data_source.NetworkDataSource.get_default_config()
         with LocalIperf(config) as iperf:
-            network_data_source.NetworkDataSource(iperf.config)
+            nds = network_data_source.NetworkDataSource(iperf.config)
+            results = nds.run_iperf_download_test()
+            assert results is not None
+            print 'results:'
+            print (results)

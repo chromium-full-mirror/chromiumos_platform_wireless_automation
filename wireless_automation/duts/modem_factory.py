@@ -7,7 +7,7 @@ A factory that returns the right modem for the device we are running on
 """
 
 from wireless_automation.aspects import configurable
-from wireless_automation.duts import dummy_modem
+from wireless_automation.duts.modem_drivers import dummy_modem
 
 
 class ModemFactory(configurable.Configurable):

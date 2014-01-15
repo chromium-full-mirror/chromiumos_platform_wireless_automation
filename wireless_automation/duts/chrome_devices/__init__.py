@@ -1,3 +1,0 @@
-"""
-Chrome device specific code.
-"""
