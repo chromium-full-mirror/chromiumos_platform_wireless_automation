@@ -13,8 +13,7 @@ import time
 
 
 class Measurement(object):
-    # disable to few public methods
-    # pylint: disable=R0903
+    # pylint: disable=too-few-public-methods
     """
     Holds all the bits about one measurement
     """
@@ -56,5 +55,5 @@ class MeasurementList(object):
         str_list = [str(x) for x in self._global_measurement_list]
         return "\n".join(str_list)
 
-
-TheMeasurementList = MeasurementList()  # pylint: disable=invalid-name
+# pylint: disable=invalid-name
+TheMeasurementList = MeasurementList()

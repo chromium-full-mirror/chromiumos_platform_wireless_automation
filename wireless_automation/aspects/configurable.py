@@ -69,7 +69,8 @@ def merge_two_configs(base_config, extension_config):
     return base_config
 
 
-def get_items_in_config_not_in_configspec(configspec, config):  # pylint: disable=C0103,C0301
+# pylint: disable=invalid-name
+def get_items_in_config_not_in_configspec(configspec, config):
     """
     :param config: ConfigObj
 
@@ -87,6 +88,7 @@ def get_items_in_config_not_in_configspec(configspec, config):  # pylint: disabl
         preserve_errors=True, copy=True)
     extra_items = configobj.get_extra_values(new_config)
     return extra_items
+# pylint: enable=invalid-name
 
 
 def configobj_to_string(config):
@@ -133,9 +135,10 @@ def list_to_configspec(string_list):
     try:
         return configobj.ConfigObj(configspec=string_list).configspec
     except configobj.ConfigspecError, error:
-        print (error)
-        print ("This Configspec did not parse:")
-        print (string_list)
+        log = logging.getLogger(LOG_NAME)
+        log.error(error)
+        log.error("This Configspec did not parse:")
+        log.error(string_list)
         raise
 
 
@@ -189,7 +192,9 @@ def nest_configspecs(tuple_list):
         #  Convert to a list of strings, like what would be in a file
         strings = configspec.write()
         #  Change all the [] to [[]] to indent them all one more level
-        strings = [re.sub('\[(.*)\]', '[[\\1]]', x) for x in strings]  # pylint: disable=anomalous-backslash-in-string,line-too-long
+        # pylint: disable=anomalous-backslash-in-string
+        strings = [re.sub('\[(.*)\]', '[[\\1]]', x) for x in strings]
+        # pylint: enable=anomalous-backslash-in-string
         #  Add the class path to top, so we know where this came from
         strings = ['# From Class: ' + the_class.__name__] + strings
         #  Add the name to the top of the configspec
@@ -456,7 +461,7 @@ class Configurable(object):
     """
     # The config spec(a ConfigObject term for the definition of the
     #  configuration)
-    CONFIGSPEC = ['NEVER_SET']
+    CONFIGSPEC = ['DEFAULT_VALUE AS SET IN CONFIGURABLE.PY']
 
     def __init__(self, input_config_data=None):
         """
@@ -480,7 +485,9 @@ class Configurable(object):
             raise ConfigurationError(error_message)
 
         # Check the configspec for sanity.
-        self.CONFIGSPEC = configspec_to_str_list(self.CONFIGSPEC)  # pylint: disable=C0103,C0301
+        # pylint: disable=invalid-name
+        self.CONFIGSPEC = configspec_to_str_list(self.CONFIGSPEC)
+        # pylint: enable=invalid-name
 
         # Run get_default_config to verify the configspec is valid
         # We do this at construction to announce problems as early as possible
@@ -491,6 +498,8 @@ class Configurable(object):
         # This way the incoming config could be empty, or have a single value.
         input_config_obj = configobj.ConfigObj(input_config_data)
         config = merge_two_configs(default_config, input_config_obj)
+        # Save this for get_config
+        self._orig_config = config
 
         if self.is_this_config_valid(config):
             # Convert the string values to ints and floats
@@ -500,6 +509,13 @@ class Configurable(object):
                 'config data does not match the configspec of the object:\n\n'
                 '%s \n\n\n\n %s ' % ('\n'.join(config.write()),
                                      '\n'.join(self.CONFIGSPEC)))
+
+    def get_config(self):
+        """
+        Return the config that was used to init this object.
+        :return: A ConfigObj.
+        """
+        return self._orig_config
 
     @classmethod
     def is_this_config_valid(cls, config):
@@ -541,8 +557,11 @@ class Configurable(object):
 
         log.critical('Above config must conform to this configspec: ')
         pretty_str = pprint.pformat(cls.CONFIGSPEC)
+        # The isinstance check ensures there is a write method
+        # pylint: disable=no-member
         if isinstance(cls.CONFIGSPEC, configobj.ConfigObj):
-            pretty_str = pprint.pformat(cls.CONFIGSPEC.write())  # pylint: disable=no-member,line-too-long
+            pretty_str = pprint.pformat(cls.CONFIGSPEC.write())
+            # pylint: enable=no-member
         log.critical('\n' + pretty_str)
         if len(extra_items) > 0:
             log.critical('Extra (misspelled?) items: ')
@@ -561,6 +580,7 @@ class Configurable(object):
 
         """
         configspec = configspec_to_str_list(cls.CONFIGSPEC)
+        log = logging.getLogger(LOG_NAME)
         try:
             config = configobj.ConfigObj(configspec=configspec)
             validator = validate.Validator()
@@ -574,7 +594,7 @@ class Configurable(object):
             # by the above code means the config was bad, and we should
             # stop and print out useful debugging info.
             pretty_str = pprint.pformat(configspec)
-            print ('This configspec failed: \n%s ', pretty_str)
-            print (exc)
+            log.error('This configspec failed: \n%s ', pretty_str)
+            log.error(exc)
             raise ConfigurationError(exc.message)
         return config

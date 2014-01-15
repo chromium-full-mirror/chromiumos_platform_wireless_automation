@@ -2,12 +2,21 @@
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+"""
+Children of this class can specify how they need to be configured.
+"""
+# These test methods don't always use self.
+#pylint: disable=no-self-use
+# There are many tests.
+#pylint: disable=too-many-public-methods
+# These test names are very verbose to aid in debugging.
+#pylint: disable=invalid-name
+
 
 import copy
 import StringIO
 import sys
 import unittest
-from pprint import pprint
 
 from wireless_automation.aspects import configurable
 from wireless_automation.aspects import wireless_automation_logging
@@ -85,6 +94,9 @@ class ConfigurableClassWithConfigobjAsConfigspec(configurable.Configurable):
 
 
 class ClassWithAllTheConfigTypes(configurable.Configurable):
+    """
+    Test Class with all the types.
+    """
     CONFIGSPEC = [
         "Number = integer(min=0, max=10, default=9)",
         #"Float = float (min='0', max='1.111', default = '1.1')",
@@ -96,12 +108,12 @@ class ClassWithAllTheConfigTypes(configurable.Configurable):
         "IntList = int_list(min=1, max=10, default =list(1,2))",
         "FloatList = float_list(min=1, max=10, default =list('1.1',2))",
         "BoolList =  bool_list(min=1, max=10, "
-                     "default =list(True,False,0,'yes',no))",
+                "default =list(True,False,0,'yes',no))",
         "IpAddrList = ip_addr_list(min=1, max=10, "
-                     "default =list(10.10.10.1,1.1.1.1))",
+                "default =list(10.10.10.1,1.1.1.1))",
         "StringList = string_list(min=1, max=10, "
-                       "default =list('string1', 'string2'))",
-        #Mixed list does not have the default keyword, making this
+                "default =list('string1', 'string2'))",
+        # Mixed list does not have the default keyword, making this
         # not useful for Configurable, which uses defaults extensively.
         #"MixedList = Do not use.
         "AlwaysOK = pass(default = None) ",
@@ -121,29 +133,31 @@ class TestConfigurableWithManyClasses(unittest.TestCase):
         Modify a config spec in a derived class.
         """
         class NewClass(ConfigurableTestClass1):
+            """
+            Test Class.
+            """
 
             # ConfigObj keeps some deep links to the orig list used
             # to construct it. Without the deepcopy, other tests that
             # run after this test get the modified data and fail.
             base_config = copy.deepcopy(ConfigurableTestClass1.CONFIGSPEC)
             base_configspec = configurable.list_to_configspec(base_config)
-            base_configspec['level_1']['midnumber'] = 'float'
+            base_configspec['level_1']['midnumber'] = 'float(default=1)'
             CONFIGSPEC = base_configspec
 
-            def __init__(self):
-                pass
+            def __init__(self, config):
+                ConfigurableTestClass1.__init__(self, config)
 
-        x = NewClass()
-        assert x.CONFIGSPEC['level_1']['midnumber'] == 'float'
+        tmp_config = NewClass.get_default_config()
+        assert tmp_config['level_1']['midnumber'] == 1
 
     def test_config_obj_to_string(self):
         """
         Can we get the string rep of a
         """
-        tt = ConfigurableTestClass1()
-        default_config = tt.get_default_config()
+        temp = ConfigurableTestClass1()
+        default_config = temp.get_default_config()
         config_str = configurable.configobj_to_string(default_config)
-        print config_str
         assert '#comment here' in config_str
         assert 'flavor = berrydefault'in config_str
 
@@ -170,26 +184,27 @@ class TestConfigurableWithManyClasses(unittest.TestCase):
         the [] hierarchy
         """
         class ManyConfigSpecs(configurable.Configurable):
+            """
+            Class with many different configspecs.
+            """
 
-            CONFIGSPEC = ['#TopTopComment '] + \
-                         configurable.nest_configspecs([
-                             ('class1', ConfigurableTestClass1),
-                             ('class2', ConfigurableTestClass1)]
-                         )
+            CONFIGSPEC = ['#TopTopComment '] + configurable.nest_configspecs([
+                ('class1', ConfigurableTestClass1),
+                ('class2', ConfigurableTestClass1)]
+            )
 
-            def __init__(self, config):
-                super(ManyConfigSpecs, self).__init__(config)
+            def __init__(self, l_config):
+                super(ManyConfigSpecs, self).__init__(l_config)
 
         config = ManyConfigSpecs.get_default_config()
-        print "\n".join(config.configspec.write())
-        test_class = ManyConfigSpecs(config)
+        ManyConfigSpecs(config)
 
     def test_write_and_read_config_file(self):
         """
         test_write_and_read_config_file
         """
-        tt = ConfigurableTestClass1()
-        default_config = tt.get_default_config()
+        temp = ConfigurableTestClass1()
+        default_config = temp.get_default_config()
         fh = StringIO.StringIO()
         default_config.write(fh)
         fh.seek(0)
@@ -202,46 +217,46 @@ class TestConfigurableWithManyClasses(unittest.TestCase):
         """
         test_pass_part_of_config_to_object
         """
-        tt = ConfigurableTestClass1()
+        temp = ConfigurableTestClass1()
         sub_configspec = configurable.get_section_of_configspec(
-            tt.config.configspec, 'level_1')
+            temp.config.configspec, 'level_1')
         ConfigurableOnlyNeedsLevel1.CONFIGSPEC = sub_configspec
-        config = tt.get_default_config()
+        config = temp.get_default_config()
         section = configurable.get_section_of_config(config, 'level_1')
-        tt1 = ConfigurableOnlyNeedsLevel1(section)
+        ConfigurableOnlyNeedsLevel1(section)
 
     def test_get_section_of_configspec_should_raise_on_dict_input(self):
         """
         test_get_section_of_configspec_should_raise_on_dict_input
         """
-        tt = ConfigurableTestClass1()
+        ConfigurableTestClass1()
         with self.assertRaises(configurable.ConfigurationError):
-            sub_configspec = configurable.get_section_of_configspec(
+            configurable.get_section_of_configspec(
                 {'spec': '=integer'}, {'level_1'})
 
     def test_build_config_from_two_classes_and_get_subsections(self):
         """
         test_build_config_from_two_classes_and_get_subsections
         """
-        tt = ConfigurableTestClass1()
+        temp = ConfigurableTestClass1()
         combined = configurable.combine_configs([
-            ('first', tt.config),
-            ('second', tt.config)
+            ('first', temp.config),
+            ('second', temp.config)
         ])
         combined_list_str = combined.write()
         self.assertEqual(combined_list_str[0], '[first]', 'combined lists')
-        self.assertEqual(combined['first'], tt.config, '[first] missing')
-        self.assertEqual(combined['second'], tt.config, '[second] missing')
+        self.assertEqual(combined['first'], temp.config, '[first] missing')
+        self.assertEqual(combined['second'], temp.config, '[second] missing')
 
     def test_combine_configs_should_raise_on_duplicate_names(self):
         """
         test_combine_configs_should_raise_on_duplicate_names
         """
-        tt = ConfigurableTestClass1()
+        temp = ConfigurableTestClass1()
         with self.assertRaises(configurable.ConfigurationError):
-            combined = configurable.combine_configs([
-                ('first', tt.config),
-                ('first', tt.config)
+            configurable.combine_configs([
+                ('first', temp.config),
+                ('first', temp.config)
             ])
 
     def test_get_section_of_configspec_should_raise_on_missing_section(self):
@@ -251,7 +266,7 @@ class TestConfigurableWithManyClasses(unittest.TestCase):
         configspec = ConfigurableTestClass1.CONFIGSPEC
         section = 'non_existant_section_name'
         with self.assertRaises(configurable.ConfigurationError):
-            configspec_section = configurable.get_section_of_configspec(
+            configurable.get_section_of_configspec(
                 configspec, section)
 
     def test_get_section_of_configspec(self):
@@ -271,8 +286,8 @@ class TestConfigurableWithManyClasses(unittest.TestCase):
         """
         test_get_section_of_config
         """
-        tt = ConfigurableTestClass1()
-        config = tt.get_default_config()
+        temp = ConfigurableTestClass1()
+        config = temp.get_default_config()
         sub_section = configurable.get_section_of_config(config, 'level_1')
         self.assertEqual(sub_section[0], 'midnumber = 22')
 
@@ -286,15 +301,15 @@ class TestConfigurable(unittest.TestCase):
         test_make_config_with_many_types_works
         """
         config = ClassWithAllTheConfigTypes.get_default_config()
-        a = ClassWithAllTheConfigTypes(config)
+        ClassWithAllTheConfigTypes(config)
 
     def test_configspec_creates_valid_default_config(self):
         """
         test_configspec_creates_valid_default_config
         """
-        tt = ConfigurableTestClass1()
-        default_config = tt.get_default_config()
-        self.assertTrue(tt.is_this_config_valid(default_config))
+        temp = ConfigurableTestClass1()
+        default_config = temp.get_default_config()
+        self.assertTrue(temp.is_this_config_valid(default_config))
 
         def add_bad_data_and_check(key, value):
             """
@@ -304,7 +319,7 @@ class TestConfigurable(unittest.TestCase):
             """
             bad_config = copy.copy(default_config)
             bad_config[key] = value
-            is_valid = tt.is_this_config_valid(bad_config)
+            is_valid = temp.is_this_config_valid(bad_config)
             self.assertFalse(is_valid)
 
         add_bad_data_and_check('topnumber', '111')  # Too large
@@ -315,44 +330,47 @@ class TestConfigurable(unittest.TestCase):
         """
         test_many_different_invalid_config_parts
         """
-        tt = ConfigurableTestClass1()
-        default_config = tt.get_default_config()
+        temp = ConfigurableTestClass1()
+        default_config = temp.get_default_config()
 
         bad_config = copy.copy(default_config)
         bad_config['level_1']['not_there'] = 1212
-        self.assertFalse(tt.is_this_config_valid(bad_config))
+        self.assertFalse(temp.is_this_config_valid(bad_config))
 
         bad_config = copy.copy(default_config)
         bad_config['level_1']['midnumber'] = 1212
-        self.assertFalse(tt.is_this_config_valid(bad_config))
+        self.assertFalse(temp.is_this_config_valid(bad_config))
 
         bad_config = copy.copy(default_config)
         bad_config['level_1']['midnumber2'] = 121232
-        self.assertFalse(tt.is_this_config_valid(bad_config))
+        self.assertFalse(temp.is_this_config_valid(bad_config))
 
         bad_config = copy.copy(default_config)
         bad_config['level_1']['level_22'] = 121232
-        self.assertFalse(tt.is_this_config_valid(bad_config))
+        self.assertFalse(temp.is_this_config_valid(bad_config))
 
         bad_config = copy.copy(default_config)
         bad_config['level_1']['level_2']['number2'] = 121232
-        self.assertFalse(tt.is_this_config_valid(bad_config))
+        self.assertFalse(temp.is_this_config_valid(bad_config))
 
     def test_many_invalid_config_parts_at_once(self):
         """
         test_many_invalid_config_parts_at_once
         """
-        tt = ConfigurableTestClass1()
-        default_config = tt.get_default_config()
+        temp = ConfigurableTestClass1()
+        default_config = temp.get_default_config()
         bad_config = copy.copy(default_config)
         bad_config['level_1']['not_there'] = 1212
         bad_config['level_1']['midnumber'] = 1212
         bad_config['level_1']['midnumber2'] = 121232
         bad_config['level_1']['level_22'] = 121232
         bad_config['level_1']['level_2']['number2'] = 121232
-        self.assertFalse(tt.is_this_config_valid(bad_config))
+        self.assertFalse(temp.is_this_config_valid(bad_config))
 
     def test_is_this_config_valid_should_raise_on_bad_input(self):
+        """
+        On bad input, this should raise an exception
+        """
         with self.assertRaises(configurable.ConfigurationError):
             ConfigurableTestClass1.is_this_config_valid(['bad_type'])
 
@@ -361,23 +379,29 @@ class TestConfigurable(unittest.TestCase):
         test_missing_configspec_raises_error
         """
         with self.assertRaises(configurable.ConfigurationError):
-            tt = ConfigurableTestClassNoConfigspec()
+            ConfigurableTestClassNoConfigspec()
 
     def test_configspec_must_not_be_dict(self):
         """
         test_configspec_must_not_be_dict
         """
         with self.assertRaises(configurable.ConfigurationError):
-            tt = ConfigurableWithConfigspecDict()
+            ConfigurableWithConfigspecDict()
 
     def test_subset_of_config_options_add_to_defaults(self):
         """
         test_subset_of_config_options_add_to_defaults
         """
-        tt = ConfigurableTestClass1(['topnumber=33'])
-        self.assertEqual(tt.config['topnumber'], 33)
-        self.assertEqual(tt.config['level_1']['midnumber'], 22)
-        tt.is_this_config_valid(tt.config)
+        temp = ConfigurableTestClass1(['topnumber=33'])
+        self.assertEqual(temp.config['topnumber'], 33)
+        self.assertEqual(temp.config['level_1']['midnumber'], 22)
+        temp.is_this_config_valid(temp.config)
+
+
+class TestConfigurableError(unittest.TestCase):
+    """
+    Check for error cases
+    """
 
     def test_get_items_in_config_not_in_configspec(self):
         """
@@ -387,7 +411,7 @@ class TestConfigurable(unittest.TestCase):
         configspec = ConfigurableTestClass1.CONFIGSPEC
         config['extra_junk'] = 33
         extras = configurable.get_items_in_config_not_in_configspec(
-                 configspec, config)
+            configspec, config)
         self.assertEqual(extras[0][1], 'extra_junk')
 
     def test_invalid_config_list_raises_error(self):
@@ -395,45 +419,68 @@ class TestConfigurable(unittest.TestCase):
         test_extra_values_raise_error
         """
         with self.assertRaises(configurable.ConfigurationError):
-            tt = ConfigurableTestClass1(['extra_thing=33'])
+            ConfigurableTestClass1(['extra_thing=33'])
 
     def test_invalid_config_dict_raises_error(self):
         """
         test_invalid_config_raises_error
         """
         with self.assertRaises(configurable.ConfigurationError):
-            tt = ConfigurableTestClass1({'bad_config_data': 333})
+            ConfigurableTestClass1({'bad_config_data': 333})
 
     def test_init_with_configobj_as_confgspec(self):
         """
         test_init_with_configobj_as_confgspec
         """
-        tt = ConfigurableClassWithConfigobjAsConfigspec()
+        ConfigurableClassWithConfigobjAsConfigspec()
 
     def test_valid_config(self):
         """
         test_valid_config
         """
-        tt = ConfigurableTestClass1()
-        default_config = tt.get_default_config()
-        tt2 = ConfigurableTestClass1(default_config)
+        temp = ConfigurableTestClass1()
+        default_config = temp.get_default_config()
+        ConfigurableTestClass1(default_config)
 
     def test_check_config_raises_error(self):
         """
         test_get_default_config_raises_error
         """
         with self.assertRaises(configurable.ConfigurationError):
-            tt = BrokenConfigurableTestClass1()
+            BrokenConfigurableTestClass1()
 
     def test_get_default_config_raises_error(self):
         """
         test_get_default_config_raises_error
         """
         with self.assertRaises(configurable.ConfigurationError):
-            tt = BrokenConfigurableTestClass1List.get_default_config()
+            BrokenConfigurableTestClass1List.get_default_config()
+
+    def test_get_config(self):
+        """
+        Test get_config. It should read back the config object that
+        was used to init it.
+        """
+        config = ConfigurableTestClass1.get_default_config()
+        temp = ConfigurableTestClass1(config)
+        used_config = temp.get_config()
+        assert used_config == config
+
+    def test_empty_config_makes_default_object(self):
+        """
+        The constructor of a Configurable object uses the incoming
+        config to add to it's config. So you can specify only one
+        parameter and have the rest default. Building an obect
+        with an empty config should produce an object with the
+        default setings.
+        """
+        config = ConfigurableTestClass1.get_default_config()
+        temp = ConfigurableTestClass1(config)
+        temp2 = ConfigurableTestClass1()
+        assert temp2.get_config() == temp.get_config()
 
 
 if __name__ == '__main__':
-    log = wireless_automation_logging.setup_logging(
+    LOG = wireless_automation_logging.setup_logging(
         'configurable', output_stream=sys.stdout)
     unittest.main(verbosity=2)
