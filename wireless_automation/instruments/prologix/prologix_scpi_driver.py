@@ -32,8 +32,10 @@ class PrologixScpiDriver(object):
     """
     all_open_connections = {}
 
-    def __init__(self, hostname=None, port=1234, gpib_address=14,  # pylint:disable=too-many-arguments
-                 read_timeout_seconds=30, connect_timeout_seconds=5):  # pylint:disable=too-many-arguments
+  #pylint:disable=too-many-arguments
+    def __init__(self, hostname=None, port=1234, gpib_address=14,
+                 read_timeout_seconds=30, connect_timeout_seconds=5):
+
         """Constructs a wrapper for the Prologix TCP<->GPIB bridge :
         Arguments:
             hostname: hostname of prologix device
@@ -50,6 +52,8 @@ class PrologixScpiDriver(object):
                            host_addr + '- %(message)s'
         self.scpi_logger = wireless_automation_logging.setup_logging(
             logger_name, formatter_string, level='INFO')
+
+        self.scpi_logger.debug("Connecting to %s : %s ..." % (hostname, port))
 
         if hostname is None:
             raise wireless_automation_error.BadState(
@@ -71,11 +75,12 @@ class PrologixScpiDriver(object):
         self.socket = self._get_socket_to_port(hostname, port,
                                                connect_timeout_seconds)
         self.auto = None
-        self.set_auto(1)
+        self._set_auto(1)
         self._add_returns_to_responses()
-        self.set_gpib_address(gpib_address)
+        self._set_gpib_address(gpib_address)
         self.scpi_logger.debug('set read_timeout_seconds: %s ' %
                                self.read_timeout_seconds)
+    #pylint:enable=too-many-arguments
 
     @classmethod
     def _get_socket_to_port(cls, hostname, port, connect_timeout_seconds):
@@ -113,7 +118,7 @@ class PrologixScpiDriver(object):
         self.send('++eot_enable 1')
         self.send('++eot_char 10')
 
-    def set_auto(self, auto):
+    def _set_auto(self, auto):
         """Controls Prologix read-after-write (aka 'auto') mode."""
         # Must be an int so we can send it as an arg to ++auto.
         self.auto = int(auto)
@@ -121,6 +126,8 @@ class PrologixScpiDriver(object):
 
     def close(self):
         """Closes the socket."""
+        caller = list(self.scpi_logger.findCaller())
+        caller[0] = os.path.basename(caller[0])
         self.scpi_logger.info('Close called by :' + str(caller))
         try:
             self.scpi_logger.error('Closing prologix devices at : %s ' %
@@ -134,7 +141,7 @@ class PrologixScpiDriver(object):
         except AttributeError:  # Maybe we close before we finish building.
             pass
 
-    def set_gpib_address(self, gpib_address):
+    def _set_gpib_address(self, gpib_address):
         """
         Sets the GPIB address to talk to on the GPIB bus. This is used
         to select which instrument on the GPIB bus to use.
@@ -240,8 +247,9 @@ class PrologixScpiDriver(object):
                 break
 
             if '-420' in error and 'Query UNTERMINATED' in error:
-                # This is benign; the GPIB bridge asked for a response when
+                # The GPIB bridge asked for a response when
                 # the device didn't have one to give.
+                self.scpi_logger.error(error)
                 continue
 
             if '+292' in error and 'Data arrived on unknown SAPI' in error:

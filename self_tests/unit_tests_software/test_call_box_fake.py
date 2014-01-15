@@ -6,7 +6,8 @@ import unittest
 
 from wireless_automation.aspects import wireless_automation_error
 from wireless_automation.aspects import wireless_automation_logging
-from wireless_automation.instruments.call_box.call_box_fake import CallBoxFakePxt
+from wireless_automation.instruments.call_box.call_box_fake import \
+    CallBoxFakePxt
 
 log = wireless_automation_logging.setup_logging('call_box_pxt')
 
@@ -56,7 +57,6 @@ class test_fake_pxt(unittest.TestCase):
         power = -82
         self.pxt.set_power_dbm(power)
         assert self.pxt.get_power_dbm() == power
-
 
     def test_power_outside_range_should_raise(self):
         """

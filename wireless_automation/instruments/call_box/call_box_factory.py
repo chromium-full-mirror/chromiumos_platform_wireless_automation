@@ -25,7 +25,7 @@ class CallBoxFactory(configurable.Configurable):
     CONFIGSPEC = \
         ['call_box_model=option("pxt","8960","fake", default="fake")'] + \
         configurable.nest_configspecs([
-            ('CallBox', call_box_interface.CallBoxInterface)
+            ('LteCallBox', call_box_interface.CallBoxLteInterface)
         ])
 
     def __init__(self, config):
@@ -48,7 +48,7 @@ class CallBoxFactory(configurable.Configurable):
         """
         Returns one callbox, built to the incoming config
         :param config: Config
-        :return: a CallBox that implements CallBoxInterface
+        :return: a CallBox that implements CallBoxBaseInterface
         """
         factory = CallBoxFactory(config)
         return factory.builder()

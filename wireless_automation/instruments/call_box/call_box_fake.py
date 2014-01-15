@@ -11,8 +11,6 @@ import logging
 from wireless_automation.aspects import wireless_automation_error
 from wireless_automation.aspects import wireless_automation_logging
 from wireless_automation.instruments.call_box import call_box_interface
-from wireless_automation.instruments.call_box.agilent_pxt \
-    import call_box_pxt
 
 LOGGER_NAME = 'call_box_fake'
 
@@ -43,7 +41,7 @@ def log_args_and_return_values(func):
     return _inner
 
 
-class CallBoxFakeBase(call_box_interface.CallBoxInterface):
+class CallBoxBaseFakeBase(call_box_interface.CallBoxBaseInterface):
     """
     A fake call box. Used for running tests on a workstation unconnected
     to a call box. This may be implemented more then once. Different brands
@@ -54,7 +52,7 @@ class CallBoxFakeBase(call_box_interface.CallBoxInterface):
     @log_args_and_return_values
     def __init__(self, config):
         self.log = wireless_automation_logging.setup_logging(LOGGER_NAME)
-        super(CallBoxFakeBase, self).__init__(config)
+        super(CallBoxBaseFakeBase, self).__init__(config)
         self._power = None
         self._rf_on = None
         self.reset()
@@ -83,6 +81,10 @@ class CallBoxFakeBase(call_box_interface.CallBoxInterface):
         return self._current_state in self.CONNECTED_STATES
 
     @log_args_and_return_values
+    def is_registered(self):
+        return self._current_state in self.REGISTERED_STATES
+
+    @log_args_and_return_values
     def _get_cell_status(self):
         """
         :return: The |current_state| of the call
@@ -103,7 +105,6 @@ class CallBoxFakeBase(call_box_interface.CallBoxInterface):
     @log_args_and_return_values
     def is_rf_on(self):
         """
-
         @rtype : object
         """
         return self._rf_on
@@ -125,17 +126,19 @@ class CallBoxFakeBase(call_box_interface.CallBoxInterface):
         self._current_state = self.IDLE_STATES[0]
 
 
-class CallBoxFakePxt(CallBoxFakeBase):
+class CallBoxFakePxt(CallBoxBaseFakeBase):
     """
     Map the real PXT values, so we test those.
     """
-    CONFIGSPEC = call_box_pxt.CallBoxPxt.CONFIGSPEC
-    ALL_STATES = call_box_pxt.CallBoxPxt.ALL_STATES
-    CONNECTED_STATES = call_box_pxt.CallBoxPxt.CONNECTED_STATES
-    IDLE_STATES = call_box_pxt.CallBoxPxt.IDLE_STATES
-    EXAMPLE_ID_STRING = call_box_pxt.CallBoxPxt.EXAMPLE_ID_STRING
+    CONFIGSPEC = call_box_interface.CallBoxPxtInterface.CONFIGSPEC
+    ALL_STATES = call_box_interface.CallBoxPxtInterface.ALL_STATES
+    CONNECTED_STATES = call_box_interface.CallBoxPxtInterface.CONNECTED_STATES
+    REGISTERED_STATES = \
+        call_box_interface.CallBoxBaseInterface.REGISTERED_STATES
+    IDLE_STATES = call_box_interface.CallBoxPxtInterface.IDLE_STATES
+    EXAMPLE_ID_STRING = call_box_interface.CallBoxPxtInterface.EXAMPLE_ID_STRING
     MATCH_IN_EXAMPLE_ID_STRING = \
-        call_box_pxt.CallBoxPxt.MATCH_IN_EXAMPLE_ID_STRING
+        call_box_interface.CallBoxPxtInterface.MATCH_IN_EXAMPLE_ID_STRING
 
     def __init__(self, config):
         super(CallBoxFakePxt, self).__init__(config)

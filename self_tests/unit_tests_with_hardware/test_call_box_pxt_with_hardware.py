@@ -7,20 +7,41 @@ import unittest
 
 from wireless_automation.aspects import wireless_automation_error
 from wireless_automation.aspects.wireless_automation_logging import \
-        setup_logging
+    setup_logging
 from wireless_automation.instruments.call_box.agilent_pxt.call_box_pxt import \
-        CallBoxPxt
+    CallBoxPxt
+from wireless_automation.instruments.call_box.call_box_fake import \
+    CallBoxFakePxt
 
 log = setup_logging('pxt_hardware_test')
 
-class test_pxt(unittest.TestCase):
+
+class TestPxt(unittest.TestCase):
     """
     Test the PXT class.
     """
 
     def setUp(self):
-        config = CallBoxPxt.get_default_config()
-        self.pxt = CallBoxPxt(config)
+        self.config = CallBoxPxt.get_default_config()
+        self.config['scpi_ip_address'] = '172.22.50.236'
+
+    def tearDown(self):
+        self.pxt.close()
+
+    def test_fake_hardware_returns_fake(self):
+        """
+        New of the pxt call box acts as a factory, and can return
+        a fake if the config asks for it.
+        This tests the new() function of the CallBoxPxt.
+        """
+        self.config['fake_hardware'] = True
+        self.pxt = CallBoxPxt(self.config)
+        assert isinstance(self.pxt, CallBoxFakePxt)
+
+    def test_no_fake_hardware_returns_real_pxt(self):
+        self.config['fake_hardware'] = False
+        self.pxt = CallBoxPxt(self.config)
+        assert isinstance(self.pxt, CallBoxPxt)
 
     def test_most_real_pxt_functions(self):
         """
@@ -29,8 +50,7 @@ class test_pxt(unittest.TestCase):
         do it once and have one large test function.
 
         """
-        #config = CallBoxFakePxt.get_default_config()
-        #self.pxt = CallBoxFakePxt(config)
+        self.pxt = CallBoxPxt(self.config)
         self.pxt.reset()
         self.pxt.start()
         power = -57
@@ -48,11 +68,11 @@ class test_pxt(unittest.TestCase):
         """
         test_stop_raises_when_it_does_not_go_idle
         """
-        log.info('Testing stop raises when is_idle does not idle')
+        self.pxt = CallBoxPxt(self.config)
         #with mock.patch.object(self.pxt, 'is_idle'):
         self.pxt.is_idle = mock.MagicMock()
         self.pxt.is_idle.return_value = False
         self.pxt.scpi = mock.MagicMock()
-        print self.pxt.is_idle()
+        log.debug('PXT idle: %s ' % self.pxt.is_idle())
         with self.assertRaises(wireless_automation_error.InstrumentTimeout):
             self.pxt.stop()

@@ -7,13 +7,13 @@ The PXT specific call box
 
 import time
 
-from wireless_automation.aspects import configurable
 from wireless_automation.aspects import wireless_automation_error
 from wireless_automation.instruments.call_box import call_box_interface
+from wireless_automation.instruments.call_box import call_box_fake
 from wireless_automation.instruments.prologix import prologix_scpi_driver
 
 
-class CallBoxPxt(call_box_interface.CallBoxInterface):
+class CallBoxPxt(call_box_interface.CallBoxPxtInterface):
     """
     Object for the Agilent PXT, the LTE call box.
     """
@@ -22,25 +22,31 @@ class CallBoxPxt(call_box_interface.CallBoxInterface):
     # to give correct answers, but stored here to keep all the
     # PXT knowledge in one place.
 
-    base_configspec = call_box_interface.CallBoxInterface.CONFIGSPEC
-    CONFIGSPEC = configurable.list_to_configspec(base_configspec)
-    CONFIGSPEC['scpi_ip_address'] = "ip_addr(default='172.22.50.244')"
-
-    ALL_STATES = ['STOP', 'OFF', 'IDLE', 'CON', 'REG', 'LOOP', 'REL', 'UNAV']
-    IDLE_STATES = ['STOP', 'IDLE', 'OFF']
-    REGISTERED_STATES = ['REG']
-    CONNECTED_STATES = ['CON']
-    EXAMPLE_ID_STRING = "Agilent Technologies,E6621A,MY51100107,6.4.0.7"
-    MATCH_IN_EXAMPLE_ID_STRING = 'E6621'
+    def __new__(cls, config):
+        """
+        Call Box Factory. Rreturn the dummy class if fake_hardware
+        is true, otherwise return an object of this class.
+        :param cls:
+        :param config:
+        :return:
+        """
+        assert isinstance(config['fake_hardware'], bool)
+        if config['fake_hardware']:
+            fake = call_box_fake.CallBoxFakePxt(config)
+            return fake
+        else:
+            return super(CallBoxPxt, cls).__new__(cls, config)
+            #return cls.__new__(cls, config)
 
     def __init__(self, config):
         super(CallBoxPxt, self).__init__(config)
+        self.log.info('Constructing : %s' % self.__class__)
         self.scpi = prologix_scpi_driver.PrologixScpiDriver(
-            hostname=config['scpi_ip_address'],
-            port=config['port'],
-            gpib_address=config['gpib_address'],
-            read_timeout_seconds=config['read_timeout_seconds'],
-            connect_timeout_seconds=config['connect_timeout_seconds']
+            hostname=self.scpi_ip_address,
+            port=self.scpi_ip_port,
+            gpib_address=self.gpib_address,
+            read_timeout_seconds=self.read_timeout_seconds,
+            connect_timeout_seconds=self.connect_timeout_seconds
         )
         # Make sure we can talk to it, and it's the right box
         assert self.MATCH_IN_EXAMPLE_ID_STRING in self.get_id()
@@ -78,6 +84,7 @@ class CallBoxPxt(call_box_interface.CallBoxInterface):
 
     def close(self):
         self.scpi.close()
+        time.sleep(.5)  # Enough to let the prologix adapter to disconnect
 
     def is_connected(self):
         return self._get_cell_status() in self.CONNECTED_STATES
@@ -107,9 +114,21 @@ class CallBoxPxt(call_box_interface.CallBoxInterface):
             # Check freq (secs)
             'BSE:CONFig:RRC:CTIMer:LENGth 5',
             'SIGN:MODE BSE',
+            # These two have to be done before loading
             'SCENArio:LOAD "FDD_Combined_v6.3.lbmf"',
-            'BSE:CONF:PROF 20MH',
-            'FREQ:BAND 13',
+            'BSE:CONFig:NAS:DEFault:EBConfig1:ADDRess:V4 "%s"' %
+                 self.dut_ip_address,
+            'BSE:CONFig:NAS:DEFault:EBConfig1:APN "%s"' % self.apn_name,
+            'BSE:CONFig:NAS:MCC %s' % self.mcc,
+            'BSE:CONFig:NAS:MNCDigits %s' % self.mnc_digits,
+            'BSE:CONFig:NAS:MNC %s' % self.mnc,
+            'BSE:EPC EMBed',
+            'BSE:CONF:PROFile %sMH' % self.bandwidth_mhz,
+            'FREQ:BAND %s' % self.band,
+            'BSE:CONFig:PHY:UL:GRANT:SPS:RB:START %s' %
+                 self.resource_block_start,
+            'BSE:CONFig:PHY:UL:GRANT:SPS:RB:SIZE %s' % self.resource_block_stop,
+            'BSE:CONF:PHY:UL:GRANT:MODE %s' % self.tx_data_mode,
             'BSE:SIMULator RUN'
         ]
         self.scpi.send_list(commands)
@@ -126,4 +145,8 @@ class CallBoxPxt(call_box_interface.CallBoxInterface):
             'Idle State: %s' % self.IDLE_STATES)
 
     def __del__(self):
-        self.scpi.close()
+        try:
+            self.scpi.close()
+        # If the tear down process has already removed the scpi object
+        except AttributeError:
+            pass
