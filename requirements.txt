@@ -3,4 +3,4 @@ pep8==1.4.6
 epydoc==3.0.1
 sphinx=1.0
 mock==1.0.1
-pexpect==2.3
+pexpect>=2.3

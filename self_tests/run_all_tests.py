@@ -40,21 +40,19 @@ def main(argv):
         logging.disable(100)
 
     # _with_hardware is used in test file names when they need actual hardware.
-    test_files_pattern = '*test_with_hardware.py'
-    if not options.with_hardware:
-        # Sub in software stubs if we run with no hardware
-        sys.modules['call_box_pxt'] = call_box_fake
-        test_files_pattern = 'test*py'
+    test_files_pattern = 'test*py'
+    if options.with_hardware:
+        test_files_pattern = '*test_with_hardware.py'
 
     verbosity = 2
     if options.verbose:
-        print 'Setting verbosity to 3'
-        print "Looking %s for files matching %s " % (options.test_dir, test_files_pattern)
         verbosity = 3
+        print 'Setting verbosity to 3'
+        print "Looking %s for files matching %s " % (options.test_dir,
+                                                     test_files_pattern)
 
-    test_loader = unittest.defaultTestLoader.discover(
-            options.test_dir,
-            pattern=test_files_pattern)
+    test_loader = unittest.defaultTestLoader.discover(options.test_dir,
+        pattern=test_files_pattern)
     test_runner = unittest.TextTestRunner(verbosity=verbosity, buffer=True)
     test_runner.run(test_loader)
 
@@ -64,5 +62,4 @@ if __name__ == '__main__':
     # any global path munging that would affect a file that imported this file.
     # All wireless_automation imports have to come below this path change.
     sys.path.append('..')
-    from wireless_automation.instruments.call_box import call_box_fake
     main(sys.argv)

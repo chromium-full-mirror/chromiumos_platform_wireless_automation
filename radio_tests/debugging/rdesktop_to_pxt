@@ -2,5 +2,5 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-rdesktop  -u Administrator -p agilent4u -z 172.22.50.235
+rdesktop  -u Administrator -p agilent4u -z 172.22.50.236
 
